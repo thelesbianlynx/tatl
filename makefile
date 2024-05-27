@@ -7,7 +7,7 @@ $(NAME): $(OBJECTS)
 	gcc $(OBJECTS) -o $(NAME) -lncurses
 
 out/%.o: src/%.c | out
-	gcc $< -c -o $@ -Wall
+	gcc $< -c -o $@ -Wall -g
 
 out:
 	mkdir -p out

@@ -1,40 +1,29 @@
 #include "main.h"
 
-#include <curses.h>
-#include <term.h>
-#include <termios.h>
 #include <sys/ioctl.h>
 
 #include "input.h"
+#include "output.h"
 #include "editor.h"
 
 
 int main () {
-    setupterm(NULL, 1, NULL);
-
-    struct termios termios;
-    tcgetattr(0, &termios);
-    {
-        struct termios term_raw = termios;
-        cfmakeraw(&term_raw);
-        tcsetattr(0, TCSANOW, &term_raw);
-    }
-
-    tputs(tigetstr("smcup"), 1, putchar);
+    output_init();
 
     struct editor editor;
     editor_init(&editor);
 
     bool running;
 
-    uint32_t status;
-    struct input_state state;
+    InputStatus status;
+    InputState state;
 
     struct winsize size;
     int width = 0, height = 0;
 
     for (;;) {
-        status = nextkey(10, &state);
+        uint32_t debug[32] = {0};
+        status = nextkey(10, &state, debug);
         running = editor_update(&editor, status, &state);
 
         if (!running) break;
@@ -44,13 +33,13 @@ int main () {
             height = size.ws_row;
         }
 
-        editor_draw(&editor, width, height);
+        if (status != INPUT_NONE)
+            debug[0] = 0;
+        editor_draw(&editor, width, height, debug);
 
     }
 
     editor_fini(&editor);
 
-    tputs(tigetstr("rmcup"), 1, putchar);
-
-    tcsetattr(0, TCSANOW, &termios);
+    output_fini();
 }
