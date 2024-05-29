@@ -41,27 +41,107 @@ void buffer_save (Buffer* buffer) {
 }
 
 void buffer_draw (Buffer* buffer, Box window) {
-    for (int i = 0; i < window.height; ++i) {
-        output_cup(window.y + i, window.x);
-        CharBuffer* line = array_get(buffer->lines, buffer->view_line + i);
-        for (int j = 0; j < window.width; ++j) {
-            if (line != NULL && j < line->size && line->buffer[j] > 32) {
+    // for (int i = 0; i < window.height; ++i) {
+    //     output_cup(window.y + i, window.x);
+    //     CharBuffer* line = array_get(buffer->lines, buffer->view_line + i);
+    //     for (int j = 0; j < window.width; ++j) {
+    //         if (line != NULL && j < line->size && line->buffer[j] > 32) {
+    //             output_char(line->buffer[j]);
+    //         } else {
+    //             output_char(' ');
+    //         }
+    //     }
+    // }
+    //
+    // int cx = buffer->cursor.col;
+    // int cy = buffer->cursor.line - buffer->view_line;
+    // if (cx >= window.width || cy >= window.height) {
+    //     output_civis();
+    // } else {
+    //     output_cvvis();
+    //     output_cup(window.y + cy, window.x + cx);
+    // }
+
+    // Line Number Width.
+    int32_t ln_c = (int) log10(buffer->lines->size) + 1;
+
+    // Final Cursor Position.
+    int32_t cx = -1,  cy = -1;
+
+    // Title.
+    output_cup(window.y, window.x);
+    output_setfg(0);
+    output_setbg(7);
+    output_str(buffer->filename);
+    //output_setfg(0);
+
+    // Selection Flag.
+    bool in_selection = false;
+
+    // Buffer.
+    for (int i = 0; i < window.height - 1; i++) {
+        output_cup(window.y + i + 1, window.x);
+        output_setbg(7);
+
+        //End of File.
+        if (i >= buffer->lines->size) {
+            for (int j = 0; j < ln_c; j++) {
+                output_char(' ');
+            }
+            output_setbg(15);
+            for (int j = ln_c; j < window.width; j++) {
+                output_char(' ');
+            }
+            continue;
+        }
+
+        CharBuffer* line = buffer->lines->data[i];
+
+        // Line Number.
+        char ln_b[ln_c + 1];
+        snprintf(ln_b, ln_c + 1, "%*d", ln_c, i);
+        output_str(ln_b);
+
+        // Line Text.
+        output_setbg(in_selection ? 14 : 15);
+        output_char(' ');
+        for (int j = 0; j <= line->size; j++) {
+            if (j + ln_c + 1 >= window.width) {
+                if (buffer->cursor.line == i && buffer->cursor.col >= j) in_selection = !in_selection;
+                if (buffer->selection.line == i && buffer->selection.col >= j) in_selection = !in_selection;
+                break;
+            }
+
+            if (buffer->cursor.line == i && buffer->cursor.col == j) {
+                in_selection = !in_selection;
+                output_setbg(in_selection ? 14 : 15);
+                cx = ln_c + 1 + j;
+                cy = i + 1;
+            }
+
+            if (buffer->selection.line == i && buffer->selection.col == j) {
+                in_selection = !in_selection;
+                output_setbg(in_selection ? 14 : 15);
+            }
+
+            if (line->buffer[j] > 32) {
                 output_char(line->buffer[j]);
-            } else {
+            } else if (j < line->size) {
                 output_char(' ');
             }
         }
+
+        // Rest Of Line.
+        if (in_selection) output_setbg(15);
+        for (int j = ln_c + 1 + line->size; j < window.width; j++) {
+            output_char(' ');
+        }
     }
 
-    int cx = buffer->cursor.col;
-    int cy = buffer->cursor.line - buffer->view_line;
-    if (cx >= window.width || cy >= window.height) {
-        output_civis();
-    } else {
-        output_cvvis();
+    // Set Final Cursor Position.
+    if (cx >= 0 && cy >= 0) {
         output_cup(window.y + cy, window.x + cx);
     }
-
 }
 
 
@@ -71,6 +151,8 @@ void buffer_edit_char (Buffer* buffer, uint32_t ch, int32_t i) {
         charbuffer_ichar(line, (char) ch, buffer->cursor.col);
         buffer->cursor.col++;
     }
+
+    buffer->selection = buffer->cursor;
 }
 
 void buffer_edit_text (Buffer* buffer, CharBuffer* text, int32_t i) {
@@ -88,6 +170,8 @@ void buffer_edit_line (Buffer* buffer, int32_t i) {
         buffer->cursor.line++;
         buffer->cursor.col = 0;
     }
+
+    buffer->selection = buffer->cursor;
 }
 
 void buffer_edit_tab (Buffer* buffer, int32_t i) {
@@ -132,6 +216,8 @@ void buffer_edit_backspace (Buffer* buffer, int32_t i) {
             buffer->cursor.col--;
         }
     }
+
+    buffer->selection = buffer->cursor;
 }
 
 

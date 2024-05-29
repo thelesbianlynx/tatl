@@ -64,6 +64,15 @@ void output_uchar (uint32_t u) {
 }
 
 
+void output_str (const char* str) {
+    for (;;) {
+        char c = *(str++);
+        if (c == '\0') return;
+        output_char(c);
+    }
+}
+
+
 void output_frame () {
     write(1, buffer, buf_size);
     buf_size = 0;

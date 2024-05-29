@@ -35,6 +35,10 @@ bool editor_update (Editor* editor, InputStatus status, InputState* state) {
         buffer_edit_backspace(editor->buffer, 1);
     }
 
+    if (status == INPUT_ALT_BACKSPACE) {
+        buffer_edit_delete(editor->buffer, 1);
+    }
+
     if (status == INPUT_UP) {
         buffer_cursor_line(editor->buffer, -1, false);
     }
@@ -49,6 +53,22 @@ bool editor_update (Editor* editor, InputStatus status, InputState* state) {
 
     if (status == INPUT_RIGHT) {
         buffer_cursor_char(editor->buffer,  1, false);
+    }
+
+    if (status == INPUT_SHIFT_UP) {
+        buffer_cursor_line(editor->buffer, -1, true);
+    }
+
+    if (status == INPUT_SHIFT_DOWN) {
+        buffer_cursor_line(editor->buffer,  1, true);
+    }
+
+    if (status == INPUT_SHIFT_LEFT) {
+        buffer_cursor_char(editor->buffer, -1, true);
+    }
+
+    if (status == INPUT_SHIFT_RIGHT) {
+        buffer_cursor_char(editor->buffer,  1, true);
     }
 
 

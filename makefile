@@ -4,7 +4,7 @@ OBJECTS = $(patsubst src/%.c, out/%.o, $(SOURCES))
 NAME = catnip
 
 $(NAME): $(OBJECTS)
-	gcc $(OBJECTS) -o $(NAME) -lncurses
+	gcc $(OBJECTS) -o $(NAME) -lm -lncurses
 
 out/%.o: src/%.c | out
 	gcc $< -c -o $@ -Wall -g

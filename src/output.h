@@ -12,6 +12,7 @@ void output_fini ();
 
 int  output_char  (int c);
 void output_uchar (uint32_t u);
+void output_str   (const char* str);
 
 void output_frame ();
 void output_reset ();
