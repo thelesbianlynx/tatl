@@ -77,7 +77,7 @@ bool editor_update (Editor* editor, InputStatus status, InputState* state) {
     return true;
 }
 
-void editor_draw (Editor* editor, uint32_t width, uint32_t height, uint32_t* debug) {
+void editor_draw (Editor* editor, int32_t width, int32_t height, int32_t* debug) {
     editor->width = width;
     editor->height = height;
 

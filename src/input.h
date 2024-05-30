@@ -80,4 +80,4 @@ struct input_state {
     int32_t x, y;
 };
 
-uint32_t nextkey (int32_t timeout, struct input_state* r_inputstate, uint32_t* debug);
+InputStatus nextkey (int32_t timeout, InputState* r_inputstate, int32_t* debug);

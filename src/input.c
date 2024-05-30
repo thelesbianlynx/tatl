@@ -50,7 +50,7 @@ bool mod_shift (uint32_t mods) {
     return (mods > 0 && mods % 2 == 0) || mods == 5;
 }
 
-uint32_t nextkey (int32_t timeout, struct input_state* r_inputstate, uint32_t* debug) {
+InputStatus nextkey (int32_t timeout, InputState* r_inputstate, int32_t* debug) {
     struct pollfd pollfd = { .fd = 0, .events = POLLIN };
     int status = poll(&pollfd, 1, 1000);
     if (status > 0) {

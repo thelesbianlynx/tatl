@@ -41,55 +41,37 @@ void buffer_save (Buffer* buffer) {
 }
 
 void buffer_draw (Buffer* buffer, Box window) {
-    // for (int i = 0; i < window.height; ++i) {
-    //     output_cup(window.y + i, window.x);
-    //     CharBuffer* line = array_get(buffer->lines, buffer->view_line + i);
-    //     for (int j = 0; j < window.width; ++j) {
-    //         if (line != NULL && j < line->size && line->buffer[j] > 32) {
-    //             output_char(line->buffer[j]);
-    //         } else {
-    //             output_char(' ');
-    //         }
-    //     }
-    // }
-    //
-    // int cx = buffer->cursor.col;
-    // int cy = buffer->cursor.line - buffer->view_line;
-    // if (cx >= window.width || cy >= window.height) {
-    //     output_civis();
-    // } else {
-    //     output_cvvis();
-    //     output_cup(window.y + cy, window.x + cx);
-    // }
-
     // Line Number Width.
-    int32_t ln_c = (int) log10(buffer->lines->size) + 1;
+    int32_t ln_width = (int) log10(buffer->lines->size) + 3;
 
     // Final Cursor Position.
     int32_t cx = -1,  cy = -1;
+
+    // Selection Flag.
+    bool in_selection = false;
 
     // Title.
     output_cup(window.y, window.x);
     output_setfg(0);
     output_setbg(7);
-    output_str(buffer->filename);
-    //output_setfg(0);
-
-    // Selection Flag.
-    bool in_selection = false;
+    char title_buf[window.width + 1];
+    snprintf(title_buf, window.width + 1, "%*c%-*s", ln_width - 2, ' ', window.width - ln_width - 2, buffer->filename);
+    output_str(title_buf);
 
     // Buffer.
     for (int i = 0; i < window.height - 1; i++) {
         output_cup(window.y + i + 1, window.x);
-        output_setbg(7);
+        output_setfg(7);
+        output_setbg(8);
 
         //End of File.
         if (i >= buffer->lines->size) {
-            for (int j = 0; j < ln_c; j++) {
+            for (int j = 0; j < ln_width; j++) {
                 output_char(' ');
             }
+            output_setfg(0);
             output_setbg(15);
-            for (int j = ln_c; j < window.width; j++) {
+            for (int j = ln_width; j < window.width; j++) {
                 output_char(' ');
             }
             continue;
@@ -98,15 +80,16 @@ void buffer_draw (Buffer* buffer, Box window) {
         CharBuffer* line = buffer->lines->data[i];
 
         // Line Number.
-        char ln_b[ln_c + 1];
-        snprintf(ln_b, ln_c + 1, "%*d", ln_c, i);
-        output_str(ln_b);
+        char ln_buf[ln_width + 1];
+        snprintf(ln_buf, ln_width + 1, "%*d ", ln_width - 1 , i);
+        output_str(ln_buf);
 
         // Line Text.
+        output_setfg(0);
         output_setbg(in_selection ? 14 : 15);
         output_char(' ');
         for (int j = 0; j <= line->size; j++) {
-            if (j + ln_c + 1 >= window.width) {
+            if (j + ln_width + 1 >= window.width) {
                 if (buffer->cursor.line == i && buffer->cursor.col >= j) in_selection = !in_selection;
                 if (buffer->selection.line == i && buffer->selection.col >= j) in_selection = !in_selection;
                 break;
@@ -115,7 +98,7 @@ void buffer_draw (Buffer* buffer, Box window) {
             if (buffer->cursor.line == i && buffer->cursor.col == j) {
                 in_selection = !in_selection;
                 output_setbg(in_selection ? 14 : 15);
-                cx = ln_c + 1 + j;
+                cx = ln_width + 1 + j;
                 cy = i + 1;
             }
 
@@ -133,7 +116,7 @@ void buffer_draw (Buffer* buffer, Box window) {
 
         // Rest Of Line.
         if (in_selection) output_setbg(15);
-        for (int j = ln_c + 1 + line->size; j < window.width; j++) {
+        for (int j = ln_width + 1 + line->size; j < window.width; j++) {
             output_char(' ');
         }
     }
@@ -144,8 +127,46 @@ void buffer_draw (Buffer* buffer, Box window) {
     }
 }
 
+static
+bool delete_selection (Buffer* buffer) {
+    Point begin = buffer->cursor, end = buffer->selection;
+
+    if (begin.line == end.line) {
+        if (begin.col == end.col) {
+            return false;
+        } else if (begin.col > end.col) {
+            begin = buffer->selection;
+            end = buffer->cursor;
+        }
+        CharBuffer* line = buffer->lines->data[begin.line];
+        charbuffer_rm_substr(line, begin.col, end.col);
+        buffer->cursor = buffer->selection = begin;
+        return true;
+    } else if (begin.line > end.line) {
+        begin = buffer->selection;
+        end = buffer->cursor;
+    }
+
+    CharBuffer* line_begin = buffer->lines->data[begin.line];
+    charbuffer_rm_suffix(line_begin, begin.col);
+
+    for (int i = begin.line + 1; i < end.line; i++) {
+        CharBuffer* line = array_remove(buffer->lines, begin.line + 1);
+        charbuffer_destroy(line);
+    }
+
+    CharBuffer* line_end = array_remove(buffer->lines, begin.line + 1);
+    charbuffer_rm_prefix(line_end, end.col);
+    charbuffer_achars(line_begin, line_end);
+    charbuffer_destroy(line_end);
+
+    buffer->cursor = buffer->selection = begin;
+    return true;
+}
+
 
 void buffer_edit_char (Buffer* buffer, uint32_t ch, int32_t i) {
+    delete_selection(buffer);
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         charbuffer_ichar(line, (char) ch, buffer->cursor.col);
@@ -161,6 +182,7 @@ void buffer_edit_text (Buffer* buffer, CharBuffer* text, int32_t i) {
 }
 
 void buffer_edit_line (Buffer* buffer, int32_t i) {
+    delete_selection(buffer);
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         CharBuffer* newline = charbuffer_create();
@@ -185,6 +207,7 @@ void buffer_edit_indent (Buffer* buffer, int32_t i) {
 }
 
 void buffer_edit_delete (Buffer* buffer, int32_t i) {
+    if (i > 0 && delete_selection(buffer)) i--;
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         if (buffer->cursor.col >= line->size) {
@@ -200,6 +223,7 @@ void buffer_edit_delete (Buffer* buffer, int32_t i) {
 }
 
 void buffer_edit_backspace (Buffer* buffer, int32_t i) {
+    if (i > 0 && delete_selection(buffer)) i--;
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         if (buffer->cursor.col <= 0) {
@@ -238,7 +262,7 @@ void buffer_cursor_goto (Buffer* buffer, int32_t row, int32_t col, bool sel) {
 
 void buffer_cursor_line (Buffer* buffer, int32_t i, bool sel) {
     buffer->cursor.line += i;
-    if (buffer->cursor.line < 0) buffer->cursor.line = 0;
+    if (buffer->cursor.line <= 0) buffer->cursor.line = 0;
     if (buffer->cursor.line >= buffer->lines->size) buffer->cursor.line = buffer->lines->size - 1;
 
     // Line Wrapping logic goes here...

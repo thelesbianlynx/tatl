@@ -6,7 +6,7 @@
 
 
 struct point {
-    uint32_t line, col;
+    int32_t line, col;
 
 };
 
@@ -16,11 +16,11 @@ struct buffer {
     Point cursor;
     Point selection;
 
-    uint32_t view_line;
+    int32_t view_line;
 
     char* filename;
 
-    uint32_t tab_width;
+    int32_t tab_width;
     bool hard_tabs;
 
     // Undo/Redo Stack.

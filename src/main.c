@@ -22,7 +22,7 @@ int main () {
     int width = 0, height = 0;
 
     for (;;) {
-        uint32_t debug[32] = {0};
+        int32_t debug[32] = {0};
         status = nextkey(10, &state, debug);
         running = editor_update(&editor, status, &state);
 
