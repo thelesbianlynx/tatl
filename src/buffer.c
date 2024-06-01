@@ -55,7 +55,7 @@ void buffer_draw (Buffer* buffer, Box window) {
     output_setfg(0);
     output_setbg(7);
     char title_buf[window.width + 1];
-    snprintf(title_buf, window.width + 1, "%*c%-*s", ln_width - 2, ' ', window.width - ln_width - 2, buffer->filename);
+    snprintf(title_buf, window.width + 1, "%*c%-*s", ln_width - 2, ' ', window.width - ln_width + 2, buffer->filename);
     output_str(title_buf);
 
     // Buffer.
@@ -309,9 +309,71 @@ void buffer_cursor_char (Buffer* buffer, int32_t i, bool sel) {
     }
 }
 
-void buffer_cursor_word (Buffer* buffer, int32_t i, bool sel) {
+static
+uint32_t chartype (char ch) {
+    // Whitespace.
+    if (ch <= ' ')
+        return 0;
 
-    // ...
+    // Text (Letters and Numbers).
+    if (('0' <= ch && ch <= '9') || ('A' <= ch && ch <= 'Z' ) || ('a' <= ch && ch <= 'z') || ch > 127)
+        return 1;
+
+    // Symbol (The rest).
+    return 2;
+}
+
+
+void buffer_cursor_word (Buffer* buffer, int32_t lead, int32_t i, bool sel) {
+    int d = i > 0 ? 1 : -1;
+    if (i < 0) i *= -1;
+
+    while (i-- > 0) {
+        // Leading Move.
+        buffer_cursor_char(buffer, d * lead, true);
+
+        CharBuffer* line = buffer->lines->data[buffer->cursor.line];
+        char ch = line->buffer[buffer->cursor.col - (d > 0 ? 0 : 1)];
+        uint32_t type = chartype(ch);
+
+        // Forward.
+        if (d > 0) {
+            for (;;) {
+                buffer->cursor.col++;
+                if (buffer->cursor.col >= line->size) {
+                    buffer->cursor.col = line->size;
+                    break;
+                }
+
+                char c = line->buffer[buffer->cursor.col];
+                uint32_t t = chartype(c);
+                if (t != type) {
+                    break;
+                }
+            }
+        }
+
+        // Backward.
+        if (d < 0) {
+            for (;;) {
+                buffer->cursor.col--;
+                if (buffer->cursor.col <= 0) {
+                    buffer->cursor.col = 0;
+                    break;
+                }
+
+                char c = line->buffer[buffer->cursor.col - 1];
+                uint32_t t = chartype(c);
+                if (t != type) {
+                    break;
+                }
+            }
+        }
+    }
+
+    if (!sel) {
+        buffer->selection = buffer->cursor;
+    }
 }
 
 void buffer_cursor_home (Buffer* buffer, bool sel) {

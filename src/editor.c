@@ -5,6 +5,9 @@
 #include <curses.h>
 #include <term.h>
 
+
+static void draw_modeline (Editor* editor, Box window);
+
 void editor_init (Editor* editor) {
     editor->width = 0;
     editor->height = 0;
@@ -35,7 +38,7 @@ bool editor_update (Editor* editor, InputStatus status, InputState* state) {
         buffer_edit_backspace(editor->buffer, 1);
     }
 
-    if (status == INPUT_ALT_BACKSPACE) {
+    if (status == INPUT_ALT_BACKSPACE || status == INPUT_DELETE) {
         buffer_edit_delete(editor->buffer, 1);
     }
 
@@ -71,8 +74,69 @@ bool editor_update (Editor* editor, InputStatus status, InputState* state) {
         buffer_cursor_char(editor->buffer,  1, true);
     }
 
+    if (status == INPUT_CTRL_UP) {
+        // Magic.
+    }
 
+    if (status == INPUT_CTRL_DOWN) {
+        // Magic.
+    }
 
+    if (status == INPUT_CTRL_LEFT) {
+        buffer_cursor_word(editor->buffer, 1, -1, false);
+    }
+
+    if (status == INPUT_CTRL_RIGHT) {
+        buffer_cursor_word(editor->buffer, 1, 1, false);
+    }
+
+    if (status == INPUT_SHIFT_CTRL_UP) {
+        // Magic.
+    }
+
+    if (status == INPUT_SHIFT_CTRL_DOWN) {
+        // Magic.
+    }
+
+    if (status == INPUT_SHIFT_CTRL_LEFT) {
+        buffer_cursor_word(editor->buffer, 1, -1, true);
+    }
+
+    if (status == INPUT_SHIFT_CTRL_RIGHT) {
+        buffer_cursor_word(editor->buffer, 1, 1, true);
+    }
+
+    if (status == INPUT_ALT_UP) {
+        buffer_cursor_home(editor->buffer, false);
+    }
+
+    if (status == INPUT_ALT_DOWN) {
+        buffer_cursor_end(editor->buffer, false);
+    }
+
+    if (status == INPUT_ALT_LEFT) {
+        buffer_cursor_line_begin(editor->buffer, false);
+    }
+
+    if (status == INPUT_ALT_RIGHT) {
+        buffer_cursor_line_end(editor->buffer, false);
+    }
+
+    if (status == INPUT_SHIFT_ALT_UP) {
+        buffer_cursor_home(editor->buffer, true);
+    }
+
+    if (status == INPUT_SHIFT_ALT_DOWN) {
+        buffer_cursor_end(editor->buffer, true);
+    }
+
+    if (status == INPUT_SHIFT_ALT_LEFT) {
+        buffer_cursor_line_begin(editor->buffer, true);
+    }
+
+    if (status == INPUT_SHIFT_ALT_RIGHT) {
+        buffer_cursor_line_end(editor->buffer, true);
+    }
 
     return true;
 }
@@ -85,68 +149,52 @@ void editor_draw (Editor* editor, int32_t width, int32_t height, int32_t* debug)
     output_setbg(0);
     output_clear();
 
-    Box box = {1, 1, width-2, height - 3};
+    // Status Line.
+    {
+        Box box = {0, height - 2, width, 2};
+        draw_modeline(editor, box);
+    }
+
+    // Buffer.
+    {
+        Box box = {0, 0, width, height - 2};
+        // output_setfg(0);
+        // output_setbg(15);
+        buffer_draw(editor->buffer, box);
+    }
+
+    // Commit Frame.
+    output_frame();
+}
+
+static
+void draw_modeline (Editor* editor, Box window) {
+    int len = window.width + 1;
+    char buf[len];
+
+    Buffer* buffer = editor->buffer;
+
+    output_cup(window.y, window.x);
+    output_setfg(15);
+    output_setbg(1);
+    snprintf(buf, len, " %-*s", 7, "Normal");
+    output_str(buf);
+
+    char* langmode = "Plain Text";
+    int langlen = strlen(langmode);
+
+    int status_len = window.width - 11 - langlen;
+    char status_buf[status_len];
+    snprintf(status_buf, status_len, "%d:%d  %s  %s", buffer->cursor.line, buffer->cursor.col, "LN", "Spaces(4)");
 
     output_setfg(0);
-    output_setbg(15);
-    buffer_draw(editor->buffer, box);
+    output_setbg(7);
+    snprintf(buf, len, " %s %*s ", langmode, status_len, status_buf);
+    output_str(buf);
 
-
-    output_frame();
-
-    // tputs(tparm(tigetstr("cup"), 2, 10), 1, putchar);
-    // printf("Width: %d, Height: %d", width, height);
-    //
-    // tputs(tparm(tigetstr("cup"), 1, 10), 1, putchar);
-    // tputs(tparm(tigetstr("setab"), 15), 1, putchar);
-    // tputs(tparm(tigetstr("setaf"), 0), 1, putchar);
-    //
-    // if (editor->last_status == INPUT_CHAR) {
-    //     printf("Key: %c\n", editor->last_keycode);
-    // } else if (editor->last_status == INPUT_ALT_CHAR) {
-    //     printf("Key: ALT+%c\n", editor->last_keycode);
-    // } else if (editor->last_status == INPUT_TAB) {
-    //     printf("Key: TAB\n");
-    // } else if (editor->last_status == INPUT_ENTER) {
-    //     printf("Key: ENTER\n");
-    // } else if (editor->last_status == INPUT_ESC) {
-    //     printf("Key: ESC\n");
-    // } else if (editor->last_status == INPUT_BACKSPACE) {
-    //     printf("Key: BACKSPACE\n");
-    // } else if (editor->last_status == INPUT_UP) {
-    //     printf("Key: UP\n");
-    // } else if (editor->last_status == INPUT_DOWN) {
-    //     printf("Key: DOWN\n");
-    // } else if (editor->last_status == INPUT_LEFT) {
-    //     printf("Key: LEFT\n");
-    // } else if (editor->last_status == INPUT_RIGHT) {
-    //     printf("Key: RIGHT\n");
-    // } else if (editor->last_status == INPUT_SHIFT_UP) {
-    //     printf("Key: SHIFT+UP\n");
-    // } else if (editor->last_status == INPUT_SHIFT_DOWN) {
-    //     printf("Key: SHIFT+DOWN\n");
-    // } else if (editor->last_status == INPUT_SHIFT_LEFT) {
-    //     printf("Key: SHIFT+LEFT\n");
-    // } else if (editor->last_status == INPUT_SHIFT_RIGHT) {
-    //     printf("Key: SHIFT+RIGHT\n");
-    // } else if (editor->last_status == INPUT_SHIFT_TAB) {
-    //     printf("Key: SHIFT+TAB\n");
-    // } else if (editor->last_status == INPUT_ALT_ENTER) {
-    //     printf("Key: ALT+ENTER\n");
-    // } else if (editor->last_status == INPUT_ALT_BACKSPACE) {
-    //     printf("Key: ALT+BACKSPACE\n");
-    // }
-    //
-    // tputs(tparm(tigetstr("cup"), 3, 10), 1, putchar);
-    // tputs(tparm(tigetstr("setab"), 15), 1, putchar);
-    // tputs(tparm(tigetstr("setaf"), 0), 1, putchar);
-    //
-    // if (debug[0] != 0) {
-    //     printf("Debug:");
-    //     for (int i = 0; i < debug[0] && i < 30; ++i) {
-    //         printf("%d ", debug[i+1]);
-    //     }
-    // }
-    //
-    // fflush(stdout);
+    output_cup(window.y + 1, window.x);
+    output_setfg(7);
+    output_setbg(8);
+    snprintf(buf, len, " %-*s", window.width - 1, "'Message'");
+    output_str(buf);
 }

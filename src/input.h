@@ -9,9 +9,9 @@ enum input_status {
     INPUT_ALT_CHAR,
     INPUT_CTRL_CHAR,
 
+    INPUT_ESC,
     INPUT_TAB,
     INPUT_ENTER,
-    INPUT_ESC,
     INPUT_BACKSPACE,
 
     INPUT_SHIFT_TAB,

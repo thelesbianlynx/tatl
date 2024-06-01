@@ -47,7 +47,17 @@ void parseCSI (const char* buffer, int n, char* ch, uint32_t* keycode, uint32_t*
 
 static
 bool mod_shift (uint32_t mods) {
-    return (mods > 0 && mods % 2 == 0) || mods == 5;
+    return (mods > 0 && mods % 2 == 0);
+}
+
+static
+bool mod_alt (uint32_t mods) {
+    return mods == 3 || mods == 4;
+}
+
+static
+bool mod_ctrl (uint32_t mods) {
+    return mods >= 5;
 }
 
 InputStatus nextkey (int32_t timeout, InputState* r_inputstate, int32_t* debug) {
@@ -109,10 +119,40 @@ InputStatus nextkey (int32_t timeout, InputState* r_inputstate, int32_t* debug) 
                 return INPUT_NONE;
             }
 
-            if (c == 'A' && mod_shift(mods)) return INPUT_SHIFT_UP;
-            if (c == 'B' && mod_shift(mods)) return INPUT_SHIFT_DOWN;
-            if (c == 'D' && mod_shift(mods)) return INPUT_SHIFT_LEFT;
-            if (c == 'C' && mod_shift(mods)) return INPUT_SHIFT_RIGHT;
+            if (mod_alt(mods)) {
+                if (mod_shift(mods)) {
+                    if (c == 'A') return INPUT_SHIFT_ALT_UP;
+                    if (c == 'B') return INPUT_SHIFT_ALT_DOWN;
+                    if (c == 'D') return INPUT_SHIFT_ALT_LEFT;
+                    if (c == 'C') return INPUT_SHIFT_ALT_RIGHT;
+                }
+
+                if (c == 'A') return INPUT_ALT_UP;
+                if (c == 'B') return INPUT_ALT_DOWN;
+                if (c == 'D') return INPUT_ALT_LEFT;
+                if (c == 'C') return INPUT_ALT_RIGHT;
+            }
+
+            if (mod_ctrl(mods)) {
+                if (mod_shift(mods)) {
+                    if (c == 'A') return INPUT_SHIFT_CTRL_UP;
+                    if (c == 'B') return INPUT_SHIFT_CTRL_DOWN;
+                    if (c == 'D') return INPUT_SHIFT_CTRL_LEFT;
+                    if (c == 'C') return INPUT_SHIFT_CTRL_RIGHT;
+                }
+
+                if (c == 'A') return INPUT_CTRL_UP;
+                if (c == 'B') return INPUT_CTRL_DOWN;
+                if (c == 'D') return INPUT_CTRL_LEFT;
+                if (c == 'C') return INPUT_CTRL_RIGHT;
+            }
+
+            if (mod_shift(mods)) {
+                if (c == 'A') return INPUT_SHIFT_UP;
+                if (c == 'B') return INPUT_SHIFT_DOWN;
+                if (c == 'D') return INPUT_SHIFT_LEFT;
+                if (c == 'C') return INPUT_SHIFT_RIGHT;
+            }
 
             if (c == 'A') return INPUT_UP;
             if (c == 'B') return INPUT_DOWN;
