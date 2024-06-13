@@ -3,6 +3,11 @@
 #include "array.h"
 #include "charbuffer.h"
 
+
+static int32_t cursor_fake_col (Buffer* buffer, CharBuffer* line, int32_t real_col);
+static int32_t cursor_real_col (Buffer* buffer, CharBuffer* line, int32_t fake_col);
+static void update_mem (Buffer* buffer);
+
 Buffer* buffer_create (char* file) {
     Buffer* buffer = malloc(sizeof(Buffer));
 
@@ -13,7 +18,7 @@ Buffer* buffer_create (char* file) {
     buffer->filename = file;
 
     buffer->tab_width = 4;
-    buffer->hard_tabs = false;
+    buffer->hard_tabs = true;
 
     // Load contents.
     FILE* f = fopen(file, "r");
@@ -88,8 +93,10 @@ void buffer_draw (Buffer* buffer, Box window) {
         output_setfg(0);
         output_setbg(in_selection ? 14 : 15);
         output_char(' ');
+
+        int col = 0;
         for (int j = 0; j <= line->size; j++) {
-            if (j + ln_width + 1 >= window.width) {
+            if (col + ln_width + 1 >= window.width) {
                 if (buffer->cursor.line == i && buffer->cursor.col >= j) in_selection = !in_selection;
                 if (buffer->selection.line == i && buffer->selection.col >= j) in_selection = !in_selection;
                 break;
@@ -98,7 +105,7 @@ void buffer_draw (Buffer* buffer, Box window) {
             if (buffer->cursor.line == i && buffer->cursor.col == j) {
                 in_selection = !in_selection;
                 output_setbg(in_selection ? 14 : 15);
-                cx = ln_width + 1 + j;
+                cx = col + ln_width + 1;
                 cy = i + 1;
             }
 
@@ -109,14 +116,22 @@ void buffer_draw (Buffer* buffer, Box window) {
 
             if (line->buffer[j] > 32) {
                 output_char(line->buffer[j]);
+                col++;
+            } else if (line->buffer[j] == '\t') {
+                int32_t t = buffer->tab_width - MOD(col, buffer->tab_width);
+                for (int k = 0; k < t; k++) {
+                    output_char(' ');
+                    col++;
+                }
             } else if (j < line->size) {
                 output_char(' ');
+                col++;
             }
         }
 
         // Rest Of Line.
         if (in_selection) output_setbg(15);
-        for (int j = ln_width + 1 + line->size; j < window.width; j++) {
+        for (int j = col + ln_width + 1; j < window.width; j++) {
             output_char(' ');
         }
     }
@@ -141,6 +156,7 @@ bool delete_selection (Buffer* buffer) {
         CharBuffer* line = buffer->lines->data[begin.line];
         charbuffer_rm_substr(line, begin.col, end.col);
         buffer->cursor = buffer->selection = begin;
+        update_mem(buffer);
         return true;
     } else if (begin.line > end.line) {
         begin = buffer->selection;
@@ -161,6 +177,7 @@ bool delete_selection (Buffer* buffer) {
     charbuffer_destroy(line_end);
 
     buffer->cursor = buffer->selection = begin;
+    update_mem(buffer);
     return true;
 }
 
@@ -174,6 +191,7 @@ void buffer_edit_char (Buffer* buffer, uint32_t ch, int32_t i) {
     }
 
     buffer->selection = buffer->cursor;
+    update_mem(buffer);
 }
 
 void buffer_edit_text (Buffer* buffer, CharBuffer* text, int32_t i) {
@@ -194,6 +212,7 @@ void buffer_edit_line (Buffer* buffer, int32_t i) {
     }
 
     buffer->selection = buffer->cursor;
+    update_mem(buffer);
 }
 
 void buffer_edit_tab (Buffer* buffer, int32_t i) {
@@ -202,7 +221,8 @@ void buffer_edit_tab (Buffer* buffer, int32_t i) {
             buffer_edit_char(buffer, '\t', i);
         } else {
             while (i-- > 0) {
-                buffer_edit_char(buffer, ' ', buffer->tab_width - MOD(buffer->cursor.col, buffer->tab_width));
+                int c = cursor_fake_col(buffer, buffer->lines->data[buffer->cursor.line], buffer->cursor.col);
+                buffer_edit_char(buffer, ' ', buffer->tab_width - MOD(c, buffer->tab_width));
             }
         }
     } else {
@@ -224,9 +244,9 @@ void buffer_edit_indent (Buffer* buffer, int32_t i) {
                     CharBuffer* line = buffer->lines->data[x];
                     charbuffer_ichar(line, '\t', 0);
                 }
-                // More Complicated than this:
-                // buffer->cursor.col++;
-                // buffer->selection.col++;
+                // Actually I think this is correct:
+                buffer->cursor.col++;
+                buffer->selection.col++;
             } else {
                 for (int x = begin.line; x <= end.line; x++) {
                     CharBuffer* line = buffer->lines->data[x];
@@ -245,10 +265,16 @@ void buffer_edit_indent (Buffer* buffer, int32_t i) {
                 if (line->buffer[0] == '\t') {
                     charbuffer_rm_char(line, 0);
                     if (x == buffer->cursor.line) {
-                        // ...
+                        buffer->cursor.col--;
+                        if (buffer->cursor.col < 0) {
+                            buffer->cursor.col = 0;
+                        }
                     }
                     if (x == buffer->selection.line) {
-                        // ...
+                        buffer->selection.col--;
+                        if (buffer->selection.col < 0) {
+                            buffer->selection.col = 0;
+                        }
                     }
                 }
                 if (line->buffer[0] == ' ') {
@@ -273,6 +299,7 @@ void buffer_edit_indent (Buffer* buffer, int32_t i) {
             }
         }
     }
+    update_mem(buffer);
 }
 
 void buffer_edit_delete (Buffer* buffer, int32_t i) {
@@ -311,6 +338,7 @@ void buffer_edit_backspace (Buffer* buffer, int32_t i) {
     }
 
     buffer->selection = buffer->cursor;
+    update_mem(buffer);
 }
 
 void buffer_edit_move_line (Buffer* buffer, int32_t i) {
@@ -328,6 +356,8 @@ void buffer_cursor_goto (Buffer* buffer, int32_t row, int32_t col, bool sel) {
     buffer->cursor.line = row;
     buffer->cursor.col = col;
 
+    update_mem(buffer);
+
     if (!sel) {
         buffer->selection = buffer->cursor;
     }
@@ -340,7 +370,7 @@ void buffer_cursor_line (Buffer* buffer, int32_t i, bool sel) {
 
     // Line Wrapping logic goes here...
     CharBuffer* line = buffer->lines->data[buffer->cursor.line];
-    if (buffer->cursor.col > line->size) buffer->cursor.col = line->size;
+    buffer->cursor.col = cursor_real_col(buffer, line, buffer->col_mem);
 
     if (!sel) {
         buffer->selection = buffer->cursor;
@@ -377,6 +407,9 @@ void buffer_cursor_char (Buffer* buffer, int32_t i, bool sel) {
         buffer->cursor.col = c;
     }
 
+    //buffer->col_mem = cursor_fake_col(buffer, buffer->lines->data[buffer->cursor.line], buffer->cursor.col);
+    update_mem(buffer);
+
     if (!sel) {
         buffer->selection = buffer->cursor;
     }
@@ -395,7 +428,6 @@ uint32_t chartype (char ch) {
     // Symbol (The rest).
     return 2;
 }
-
 
 void buffer_cursor_word (Buffer* buffer, int32_t lead, int32_t i, bool sel) {
     int d = i > 0 ? 1 : -1;
@@ -444,6 +476,8 @@ void buffer_cursor_word (Buffer* buffer, int32_t lead, int32_t i, bool sel) {
         }
     }
 
+    update_mem(buffer);
+
     if (!sel) {
         buffer->selection = buffer->cursor;
     }
@@ -457,6 +491,8 @@ void buffer_cursor_home (Buffer* buffer, bool sel) {
     buffer->cursor.line = 0;
     buffer->cursor.col = 0;
 
+    update_mem(buffer);
+
     if (!sel) {
         buffer->selection = buffer->cursor;
     }
@@ -467,6 +503,8 @@ void buffer_cursor_end (Buffer* buffer, bool sel) {
     CharBuffer* line = buffer->lines->data[buffer->cursor.line];
     buffer->cursor.col = line->size;
 
+    update_mem(buffer);
+
     if (!sel) {
         buffer->selection = buffer->cursor;
     }
@@ -474,6 +512,8 @@ void buffer_cursor_end (Buffer* buffer, bool sel) {
 
 void buffer_cursor_line_begin (Buffer* buffer, bool sel) {
     buffer->cursor.col = 0;
+
+    update_mem(buffer);
 
     if (!sel) {
         buffer->selection = buffer->cursor;
@@ -484,7 +524,41 @@ void buffer_cursor_line_end (Buffer* buffer, bool sel) {
     CharBuffer* line = buffer->lines->data[buffer->cursor.line];
     buffer->cursor.col = line->size;
 
+    update_mem(buffer);
+
     if (!sel) {
         buffer->selection = buffer->cursor;
     }
+}
+
+static
+int32_t cursor_real_col (Buffer* buffer, CharBuffer* line, int32_t fake_col) {
+    for (int i = 0; i < line->size; i++) {
+        if (line->buffer[i] == '\t') {
+            fake_col -= buffer->tab_width - MOD(i, buffer->tab_width);
+        } else {
+            fake_col--;
+        }
+        if (fake_col < 0) return i;
+    }
+    return line->size;
+}
+
+static
+int32_t cursor_fake_col (Buffer* buffer, CharBuffer* line, int32_t real_col) {
+    int32_t r = 0;
+    for (int i = 0; i < real_col; i++) {
+        if (i >= line->size) break;
+        if (line->buffer[i] == '\t') {
+            r += buffer->tab_width - MOD(i, buffer->tab_width);
+        } else {
+            r++;
+        }
+    }
+    return r;
+}
+
+static
+void update_mem (Buffer* buffer) {
+    buffer->col_mem = cursor_fake_col(buffer, buffer->lines->data[buffer->cursor.line], buffer->cursor.col);
 }

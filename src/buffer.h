@@ -16,6 +16,8 @@ struct buffer {
     Point cursor;
     Point selection;
 
+    int32_t col_mem;
+
     int32_t view_line;
 
     char* filename;
