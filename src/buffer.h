@@ -54,14 +54,18 @@ void buffer_edit_delete (Buffer* buffer, int32_t i);
 
 void buffer_edit_backspace (Buffer* buffer, int32_t i);
 
+void buffer_edit_move_line (Buffer* buffer, int32_t i);
+
 
 void buffer_cursor_goto (Buffer* buffer, int32_t row, int32_t col, bool sel);
 
-void buffer_cursor_char (Buffer* buffer, int32_t i, bool sel);
-
 void buffer_cursor_line (Buffer* buffer, int32_t i, bool sel);
 
+void buffer_cursor_char (Buffer* buffer, int32_t i, bool sel);
+
 void buffer_cursor_word (Buffer* buffer, int32_t lead, int32_t i, bool sel);
+
+void buffer_cursor_paragraph (Buffer* buffer, int32_t i, bool sel);
 
 void buffer_cursor_home (Buffer* buffer, bool sel);
 

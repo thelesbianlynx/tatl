@@ -197,13 +197,82 @@ void buffer_edit_line (Buffer* buffer, int32_t i) {
 }
 
 void buffer_edit_tab (Buffer* buffer, int32_t i) {
-
-    // ...
+    if (buffer->cursor.line == buffer->selection.line && buffer->cursor.col == buffer->selection.col) {
+        if (buffer->hard_tabs) {
+            buffer_edit_char(buffer, '\t', i);
+        } else {
+            while (i-- > 0) {
+                buffer_edit_char(buffer, ' ', buffer->tab_width - MOD(buffer->cursor.col, buffer->tab_width));
+            }
+        }
+    } else {
+        buffer_edit_indent(buffer, i);
+    }
 }
 
 void buffer_edit_indent (Buffer* buffer, int32_t i) {
+    Point begin = buffer->cursor, end = buffer->selection;
+    if (begin.line > end.line) {
+        begin = buffer->selection;
+        end = buffer->cursor;
+    }
 
-    // ...
+    if (i > 0) {
+        while (i-- > 0) {
+            if (buffer->hard_tabs) {
+                for (int x = begin.line; x <= end.line; x++) {
+                    CharBuffer* line = buffer->lines->data[x];
+                    charbuffer_ichar(line, '\t', 0);
+                }
+                // More Complicated than this:
+                // buffer->cursor.col++;
+                // buffer->selection.col++;
+            } else {
+                for (int x = begin.line; x <= end.line; x++) {
+                    CharBuffer* line = buffer->lines->data[x];
+                    for (int y = 0; y < buffer->tab_width; y++)
+                        charbuffer_ichar(line, ' ', 0);
+                }
+                buffer->cursor.col += buffer->tab_width;
+                buffer->selection.col += buffer->tab_width;
+            }
+        }
+    } else {
+        while (i++ < 0) {
+            for (int x = begin.line; x <= end.line; x++) {
+                CharBuffer* line = buffer->lines->data[x];
+                if (line->size == 0) continue;
+                if (line->buffer[0] == '\t') {
+                    charbuffer_rm_char(line, 0);
+                    if (x == buffer->cursor.line) {
+                        // ...
+                    }
+                    if (x == buffer->selection.line) {
+                        // ...
+                    }
+                }
+                if (line->buffer[0] == ' ') {
+                    int y;
+                    for (y = 0; y < buffer->tab_width; y++) {
+                        if (line->size == 0 || line->buffer[0] != ' ') break;
+                        charbuffer_rm_char(line, 0);
+                    }
+                    if (x == buffer->cursor.line) {
+                        buffer->cursor.col -= y;
+                        if (buffer->cursor.col < 0) {
+                            buffer->cursor.col = 0;
+                        }
+                    }
+                    if (x == buffer->selection.line) {
+                        buffer->selection.col -= y;
+                        if (buffer->selection.col < 0) {
+                            buffer->selection.col = 0;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 void buffer_edit_delete (Buffer* buffer, int32_t i) {
@@ -242,6 +311,10 @@ void buffer_edit_backspace (Buffer* buffer, int32_t i) {
     }
 
     buffer->selection = buffer->cursor;
+}
+
+void buffer_edit_move_line (Buffer* buffer, int32_t i) {
+
 }
 
 
@@ -374,6 +447,10 @@ void buffer_cursor_word (Buffer* buffer, int32_t lead, int32_t i, bool sel) {
     if (!sel) {
         buffer->selection = buffer->cursor;
     }
+}
+
+void buffer_cursor_paragraph (Buffer* buffer, int32_t i, bool sel) {
+
 }
 
 void buffer_cursor_home (Buffer* buffer, bool sel) {

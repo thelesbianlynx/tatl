@@ -161,7 +161,6 @@ InputStatus nextkey (int32_t timeout, InputState* r_inputstate, int32_t* debug) 
 
             if (c == 'Z') return INPUT_SHIFT_TAB;
 
-
         }
     }
 

@@ -2,9 +2,6 @@
 
 #include "buffer.h"
 
-#include <curses.h>
-#include <term.h>
-
 
 static void draw_modeline (Editor* editor, Box window);
 
@@ -13,7 +10,6 @@ void editor_init (Editor* editor) {
     editor->height = 0;
 
     editor->buffer = buffer_create("cat.txt");
-
 }
 
 void editor_fini (Editor* editor) {
@@ -40,6 +36,14 @@ bool editor_update (Editor* editor, InputStatus status, InputState* state) {
 
     if (status == INPUT_ALT_BACKSPACE || status == INPUT_DELETE) {
         buffer_edit_delete(editor->buffer, 1);
+    }
+
+    if (status == INPUT_TAB) {
+        buffer_edit_tab(editor->buffer, 1);
+    }
+
+    if (status == INPUT_SHIFT_TAB) {
+        buffer_edit_indent(editor->buffer, -1);
     }
 
     if (status == INPUT_UP) {
@@ -107,11 +111,11 @@ bool editor_update (Editor* editor, InputStatus status, InputState* state) {
     }
 
     if (status == INPUT_ALT_UP) {
-        buffer_cursor_home(editor->buffer, false);
+        buffer_cursor_paragraph(editor->buffer, -1, false);
     }
 
     if (status == INPUT_ALT_DOWN) {
-        buffer_cursor_end(editor->buffer, false);
+        buffer_cursor_paragraph(editor->buffer, 1, false);
     }
 
     if (status == INPUT_ALT_LEFT) {
@@ -123,11 +127,11 @@ bool editor_update (Editor* editor, InputStatus status, InputState* state) {
     }
 
     if (status == INPUT_SHIFT_ALT_UP) {
-        buffer_cursor_home(editor->buffer, true);
+        buffer_cursor_paragraph(editor->buffer, -1, true);
     }
 
     if (status == INPUT_SHIFT_ALT_DOWN) {
-        buffer_cursor_end(editor->buffer, true);
+        buffer_cursor_paragraph(editor->buffer, 1, true);
     }
 
     if (status == INPUT_SHIFT_ALT_LEFT) {
@@ -158,8 +162,6 @@ void editor_draw (Editor* editor, int32_t width, int32_t height, int32_t* debug)
     // Buffer.
     {
         Box box = {0, 0, width, height - 2};
-        // output_setfg(0);
-        // output_setbg(15);
         buffer_draw(editor->buffer, box);
     }
 
@@ -180,12 +182,12 @@ void draw_modeline (Editor* editor, Box window) {
     snprintf(buf, len, " %-*s", 7, "Normal");
     output_str(buf);
 
-    char* langmode = "Plain Text";
+    char* langmode = "Text";
     int langlen = strlen(langmode);
 
     int status_len = window.width - 11 - langlen;
     char status_buf[status_len];
-    snprintf(status_buf, status_len, "%d:%d  %s  %s", buffer->cursor.line, buffer->cursor.col, "LN", "Spaces(4)");
+    snprintf(status_buf, status_len, "%d:%d  %s  %s", buffer->cursor.line, buffer->cursor.col, "LN", "Spaces 4");
 
     output_setfg(0);
     output_setbg(7);

@@ -33,10 +33,7 @@ int main () {
             height = size.ws_row;
         }
 
-        if (status != INPUT_NONE)
-            debug[0] = 0;
         editor_draw(&editor, width, height, debug);
-
     }
 
     editor_fini(&editor);
