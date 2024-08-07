@@ -18,7 +18,9 @@ struct buffer {
 
     int32_t col_mem;
 
-    int32_t view_line;
+    int32_t scroll_line;
+    int32_t scroll_offset;
+    bool scroll_damage;
 
     char* filename;
 

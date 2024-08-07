@@ -7,6 +7,7 @@
 static int32_t cursor_fake_col (Buffer* buffer, CharBuffer* line, int32_t real_col);
 static int32_t cursor_real_col (Buffer* buffer, CharBuffer* line, int32_t fake_col);
 static void update_mem (Buffer* buffer);
+static void update_scroll (Buffer* buffer);
 
 Buffer* buffer_create (char* file) {
     Buffer* buffer = malloc(sizeof(Buffer));
@@ -15,10 +16,15 @@ Buffer* buffer_create (char* file) {
 
     buffer->cursor = buffer->selection = (Point) {0,0};
 
+    buffer->col_mem = 0;
+    buffer->scroll_line = 0;
+    buffer->scroll_offset = 0;
+    buffer->scroll_damage = 0;
+
     buffer->filename = file;
 
     buffer->tab_width = 4;
-    buffer->hard_tabs = true;
+    buffer->hard_tabs = false;
 
     // Load contents.
     FILE* f = fopen(file, "r");
@@ -63,14 +69,26 @@ void buffer_draw (Buffer* buffer, Box window) {
     snprintf(title_buf, window.width + 1, "%*c%-*s", ln_width - 2, ' ', window.width - ln_width + 2, buffer->filename);
     output_str(title_buf);
 
+    // Update Scroll Position.
+    if (buffer->scroll_damage) {
+        if (buffer->cursor.line < buffer->scroll_line) {
+            buffer->scroll_line = buffer->cursor.line;
+        } else if (buffer->cursor.line > buffer->scroll_line + window.height - 3) {
+            buffer->scroll_line = buffer->cursor.line - window.height + 3;
+        }
+        buffer->scroll_damage = false;
+    }
+
     // Buffer.
     for (int i = 0; i < window.height - 1; i++) {
         output_cup(window.y + i + 1, window.x);
         output_setfg(7);
         output_setbg(8);
 
+        int lineno = i + buffer->scroll_line;
+
         //End of File.
-        if (i >= buffer->lines->size) {
+        if (lineno >= buffer->lines->size) {
             for (int j = 0; j < ln_width; j++) {
                 output_char(' ');
             }
@@ -82,11 +100,11 @@ void buffer_draw (Buffer* buffer, Box window) {
             continue;
         }
 
-        CharBuffer* line = buffer->lines->data[i];
+        CharBuffer* line = buffer->lines->data[lineno];
 
         // Line Number.
         char ln_buf[ln_width + 1];
-        snprintf(ln_buf, ln_width + 1, "%*d ", ln_width - 1 , i);
+        snprintf(ln_buf, ln_width + 1, "%*d ", ln_width - 1 , lineno);
         output_str(ln_buf);
 
         // Line Text.
@@ -102,14 +120,14 @@ void buffer_draw (Buffer* buffer, Box window) {
                 break;
             }
 
-            if (buffer->cursor.line == i && buffer->cursor.col == j) {
+            if (buffer->cursor.line == lineno && buffer->cursor.col == j) {
                 in_selection = !in_selection;
                 output_setbg(in_selection ? 14 : 15);
                 cx = col + ln_width + 1;
                 cy = i + 1;
             }
 
-            if (buffer->selection.line == i && buffer->selection.col == j) {
+            if (buffer->selection.line == lineno && buffer->selection.col == j) {
                 in_selection = !in_selection;
                 output_setbg(in_selection ? 14 : 15);
             }
@@ -178,6 +196,7 @@ bool delete_selection (Buffer* buffer) {
 
     buffer->cursor = buffer->selection = begin;
     update_mem(buffer);
+    update_scroll(buffer);
     return true;
 }
 
@@ -192,6 +211,7 @@ void buffer_edit_char (Buffer* buffer, uint32_t ch, int32_t i) {
 
     buffer->selection = buffer->cursor;
     update_mem(buffer);
+    update_scroll(buffer);
 }
 
 void buffer_edit_text (Buffer* buffer, CharBuffer* text, int32_t i) {
@@ -213,6 +233,7 @@ void buffer_edit_line (Buffer* buffer, int32_t i) {
 
     buffer->selection = buffer->cursor;
     update_mem(buffer);
+    update_scroll(buffer);
 }
 
 void buffer_edit_tab (Buffer* buffer, int32_t i) {
@@ -300,6 +321,7 @@ void buffer_edit_indent (Buffer* buffer, int32_t i) {
         }
     }
     update_mem(buffer);
+    update_scroll(buffer);
 }
 
 void buffer_edit_delete (Buffer* buffer, int32_t i) {
@@ -316,6 +338,8 @@ void buffer_edit_delete (Buffer* buffer, int32_t i) {
             charbuffer_rm_char(line, buffer->cursor.col);
         }
     }
+
+    update_scroll(buffer);
 }
 
 void buffer_edit_backspace (Buffer* buffer, int32_t i) {
@@ -339,6 +363,7 @@ void buffer_edit_backspace (Buffer* buffer, int32_t i) {
 
     buffer->selection = buffer->cursor;
     update_mem(buffer);
+    update_scroll(buffer);
 }
 
 void buffer_edit_move_line (Buffer* buffer, int32_t i) {
@@ -357,6 +382,7 @@ void buffer_cursor_goto (Buffer* buffer, int32_t row, int32_t col, bool sel) {
     buffer->cursor.col = col;
 
     update_mem(buffer);
+    update_scroll(buffer);
 
     if (!sel) {
         buffer->selection = buffer->cursor;
@@ -371,6 +397,8 @@ void buffer_cursor_line (Buffer* buffer, int32_t i, bool sel) {
     // Line Wrapping logic goes here...
     CharBuffer* line = buffer->lines->data[buffer->cursor.line];
     buffer->cursor.col = cursor_real_col(buffer, line, buffer->col_mem);
+
+    update_scroll(buffer);
 
     if (!sel) {
         buffer->selection = buffer->cursor;
@@ -409,6 +437,7 @@ void buffer_cursor_char (Buffer* buffer, int32_t i, bool sel) {
 
     //buffer->col_mem = cursor_fake_col(buffer, buffer->lines->data[buffer->cursor.line], buffer->cursor.col);
     update_mem(buffer);
+    update_scroll(buffer);
 
     if (!sel) {
         buffer->selection = buffer->cursor;
@@ -477,6 +506,7 @@ void buffer_cursor_word (Buffer* buffer, int32_t lead, int32_t i, bool sel) {
     }
 
     update_mem(buffer);
+    update_scroll(buffer);
 
     if (!sel) {
         buffer->selection = buffer->cursor;
@@ -492,6 +522,7 @@ void buffer_cursor_home (Buffer* buffer, bool sel) {
     buffer->cursor.col = 0;
 
     update_mem(buffer);
+    update_scroll(buffer);
 
     if (!sel) {
         buffer->selection = buffer->cursor;
@@ -504,6 +535,7 @@ void buffer_cursor_end (Buffer* buffer, bool sel) {
     buffer->cursor.col = line->size;
 
     update_mem(buffer);
+    update_scroll(buffer);
 
     if (!sel) {
         buffer->selection = buffer->cursor;
@@ -514,6 +546,7 @@ void buffer_cursor_line_begin (Buffer* buffer, bool sel) {
     buffer->cursor.col = 0;
 
     update_mem(buffer);
+    update_scroll(buffer);
 
     if (!sel) {
         buffer->selection = buffer->cursor;
@@ -525,6 +558,7 @@ void buffer_cursor_line_end (Buffer* buffer, bool sel) {
     buffer->cursor.col = line->size;
 
     update_mem(buffer);
+    update_scroll(buffer);
 
     if (!sel) {
         buffer->selection = buffer->cursor;
@@ -561,4 +595,9 @@ int32_t cursor_fake_col (Buffer* buffer, CharBuffer* line, int32_t real_col) {
 static
 void update_mem (Buffer* buffer) {
     buffer->col_mem = cursor_fake_col(buffer, buffer->lines->data[buffer->cursor.line], buffer->cursor.col);
+}
+
+static
+void update_scroll (Buffer* buffer) {
+    buffer->scroll_damage = true;
 }

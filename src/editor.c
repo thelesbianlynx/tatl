@@ -9,7 +9,9 @@ void editor_init (Editor* editor) {
     editor->width = 0;
     editor->height = 0;
 
-    editor->buffer = buffer_create("cat.txt");
+    editor->buffer = buffer_create("src/editor.c");//("cat.txt");
+
+    editor->debug = 0;
 }
 
 void editor_fini (Editor* editor) {
@@ -23,7 +25,11 @@ bool editor_update (Editor* editor, InputStatus status, InputState* state) {
     if (status == INPUT_ESC) return false;
 
     if (status == INPUT_CHAR) {
-        buffer_edit_char(editor->buffer, state->charcode, 1);
+        if (state->charcode < 32) {
+            editor->debug = state->charcode;
+        } else {
+            buffer_edit_char(editor->buffer, state->charcode, 1);
+        }
     }
 
     if (status == INPUT_ENTER) {
@@ -197,6 +203,6 @@ void draw_modeline (Editor* editor, Box window) {
     output_cup(window.y + 1, window.x);
     output_setfg(7);
     output_setbg(8);
-    snprintf(buf, len, " %-*s", window.width - 1, "'Message'");
+    snprintf(buf, len, " %-*d", window.width - 1, editor->debug);//"'Message'");
     output_str(buf);
 }

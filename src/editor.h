@@ -7,6 +7,8 @@ struct editor {
     int32_t width, height;
 
     Buffer* buffer;
+
+    int32_t debug;
 };
 
 
