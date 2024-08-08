@@ -5,8 +5,10 @@
 
 static
 void parseCSI (const char* buffer, int n, char* ch, uint32_t* keycode, uint32_t* mods) {
-    char b1[n] = {};
-    char b2[n] = {};
+    char b1[n]; // = {};
+    char b2[n]; // = {};
+    memset(b1, 0, n);
+    memset(b2, 0, n); // Clang Compatibility.
 
     int i = 2;
     int j = 0;
