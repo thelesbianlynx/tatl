@@ -2,8 +2,6 @@
 
 #include "main.h"
 
-#include "output.h"
-
 
 struct point {
     int32_t line, col;
@@ -41,7 +39,7 @@ void buffer_destroy (Buffer* buffer);
 
 void buffer_save (Buffer* buffer);
 
-void buffer_draw (Buffer* buffer, Box window);
+void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint32_t my);
 
 
 void buffer_edit_char (Buffer* buffer, uint32_t ch, int32_t i);

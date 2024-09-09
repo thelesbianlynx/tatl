@@ -1,7 +1,8 @@
 #include "editor.h"
 
 #include "buffer.h"
-
+#include "input.h"
+#include "output.h"
 
 static void draw_modeline (Editor* editor, Box window);
 
@@ -10,6 +11,8 @@ void editor_init (Editor* editor) {
     editor->height = 0;
 
     editor->buffer = buffer_create("src/editor.c");//("cat.txt");
+
+    editor->blink = true;
 
     editor->debug = 0;
 }
@@ -20,8 +23,8 @@ void editor_fini (Editor* editor) {
 
 
 bool editor_update (Editor* editor, InputStatus status, InputState* state) {
+    editor->mstate = 256;
     if (status == INPUT_NONE) return true;
-
     if (status == INPUT_ESC) return false;
 
     if (status == INPUT_CHAR) {
@@ -30,6 +33,12 @@ bool editor_update (Editor* editor, InputStatus status, InputState* state) {
         } else {
             buffer_edit_char(editor->buffer, state->charcode, 1);
         }
+    }
+
+    if (status == INPUT_MOUSE_MOTION) {
+        editor->mstate = state->charcode;
+        editor->mx = state->x;
+        editor->my = state->y;
     }
 
     if (status == INPUT_ENTER) {
@@ -85,11 +94,11 @@ bool editor_update (Editor* editor, InputStatus status, InputState* state) {
     }
 
     if (status == INPUT_CTRL_UP) {
-        // Magic.
+        buffer_edit_move_line(editor->buffer, -1);
     }
 
     if (status == INPUT_CTRL_DOWN) {
-        // Magic.
+        buffer_edit_move_line(editor->buffer, 1);
     }
 
     if (status == INPUT_CTRL_LEFT) {
@@ -155,6 +164,8 @@ void editor_draw (Editor* editor, int32_t width, int32_t height, int32_t* debug)
     editor->width = width;
     editor->height = height;
 
+    editor->blink = !editor->blink;
+
     output_setfg(15);
     output_setbg(0);
     output_clear();
@@ -168,7 +179,7 @@ void editor_draw (Editor* editor, int32_t width, int32_t height, int32_t* debug)
     // Buffer.
     {
         Box box = {0, 0, width, height - 2};
-        buffer_draw(editor->buffer, box);
+        buffer_draw(editor->buffer, box, editor->mstate, editor->mx, editor->my);
     }
 
     // Commit Frame.
@@ -203,6 +214,8 @@ void draw_modeline (Editor* editor, Box window) {
     output_cup(window.y + 1, window.x);
     output_setfg(7);
     output_setbg(8);
-    snprintf(buf, len, " %-*d", window.width - 1, editor->debug);//"'Message'");
+    //char str[512];
+    //snprintf(str, 512, "%d %u %u", editor->debug, editor->dx, editor->dy);
+    snprintf(buf, len, " %-*d", window.width - 1, editor->debug); //"'Message'");
     output_str(buf);
 }

@@ -1,14 +1,19 @@
 #pragma once
 
 #include "main.h"
-#include "input.h"
 
 struct editor {
     int32_t width, height;
 
     Buffer* buffer;
 
+    bool blink;
+
     int32_t debug;
+
+    uint32_t mstate;
+    uint32_t mx;
+    uint32_t my;
 };
 
 

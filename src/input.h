@@ -76,8 +76,8 @@ enum input_status {
 };
 
 struct input_state {
-    int32_t charcode;
-    int32_t x, y;
+    uint32_t charcode;
+    uint32_t x, y;
 };
 
 InputStatus nextkey (int32_t timeout, InputState* r_inputstate, int32_t* debug);

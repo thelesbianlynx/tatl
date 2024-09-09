@@ -2,7 +2,7 @@
 
 #include "array.h"
 #include "charbuffer.h"
-
+#include "output.h"
 
 static int32_t cursor_fake_col (Buffer* buffer, CharBuffer* line, int32_t real_col);
 static int32_t cursor_real_col (Buffer* buffer, CharBuffer* line, int32_t fake_col);
@@ -51,23 +51,47 @@ void buffer_save (Buffer* buffer) {
 
 }
 
-void buffer_draw (Buffer* buffer, Box window) {
+void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint32_t my) {
     // Line Number Width.
     int32_t ln_width = (int) log10(buffer->lines->size) + 3;
 
     // Final Cursor Position.
     int32_t cx = -1,  cy = -1;
 
-    // Selection Flag.
-    bool in_selection = false;
-
-    // Title.
-    output_cup(window.y, window.x);
-    output_setfg(0);
-    output_setbg(7);
-    char title_buf[window.width + 1];
-    snprintf(title_buf, window.width + 1, "%*c%-*s", ln_width - 2, ' ', window.width - ln_width + 2, buffer->filename);
-    output_str(title_buf);
+    // Handle Mouse Input.
+    if (mx > window.x && my > window.y) {
+        mx -= window.x;
+        my -= window.y;
+        if (mx <= window.width && my <= window.height) {
+            if (mstate == 0) {
+                // Press.
+                int32_t row = my - 2;
+                int32_t col = mx - ln_width - 2;
+                if (row >= 0 && col >= 0) {
+                    buffer_cursor_goto(buffer, row + buffer->scroll_line, col, false);
+                }
+            } else if (mstate == 32) {
+                // Drag.
+                int32_t row =  my - 2;
+                int32_t col = mx - ln_width - 2;
+                if (row >= 0 && col >= 0) {
+                    buffer_cursor_goto(buffer, row + buffer->scroll_line, col, true);
+                }
+            } else if (mstate == 64) {
+                // Scroll Up.
+                buffer->scroll_line--;
+                if (buffer->scroll_line < 0) {
+                    buffer->scroll_line = 0;
+                }
+            } else if (mstate == 65) {
+                // Scroll Down.
+                buffer->scroll_line++;
+                if (buffer->scroll_line > buffer->lines->size - 1) {
+                    buffer->scroll_line = buffer->lines->size - 1;
+                }
+            }
+        }
+    }
 
     // Update Scroll Position.
     if (buffer->scroll_damage) {
@@ -79,6 +103,19 @@ void buffer_draw (Buffer* buffer, Box window) {
         buffer->scroll_damage = false;
     }
 
+    // Selection Flag.
+    bool in_selection = false;
+    if (buffer->cursor.line < buffer->scroll_line) in_selection = !in_selection;
+    if (buffer->selection.line < buffer->scroll_line) in_selection = !in_selection;
+
+    // Title.
+    output_cup(window.y, window.x);
+    output_setfg(0);
+    output_setbg(7);
+    char title_buf[window.width + 1];
+    snprintf(title_buf, window.width + 1, "%*c%-*s", ln_width - 2, ' ', window.width - ln_width + 2, buffer->filename);
+    output_str(title_buf);
+
     // Buffer.
     for (int i = 0; i < window.height - 1; i++) {
         output_cup(window.y + i + 1, window.x);
@@ -86,6 +123,7 @@ void buffer_draw (Buffer* buffer, Box window) {
         output_setbg(8);
 
         int lineno = i + buffer->scroll_line;
+        bool draw_cursor = false;
 
         //End of File.
         if (lineno >= buffer->lines->size) {
@@ -125,12 +163,17 @@ void buffer_draw (Buffer* buffer, Box window) {
                 output_setbg(in_selection ? 14 : 15);
                 cx = col + ln_width + 1;
                 cy = i + 1;
+                draw_cursor = true;
             }
 
             if (buffer->selection.line == lineno && buffer->selection.col == j) {
                 in_selection = !in_selection;
                 output_setbg(in_selection ? 14 : 15);
             }
+
+            // if (draw_cursor) {
+            //     output_underline();
+            // }
 
             if (line->buffer[j] > 32) {
                 output_char(line->buffer[j]);
@@ -145,6 +188,11 @@ void buffer_draw (Buffer* buffer, Box window) {
                 output_char(' ');
                 col++;
             }
+
+            // if (draw_cursor) {
+            //     output_no_underline();
+            //     draw_cursor = false;
+            // }
         }
 
         // Rest Of Line.
@@ -157,6 +205,9 @@ void buffer_draw (Buffer* buffer, Box window) {
     // Set Final Cursor Position.
     if (cx >= 0 && cy >= 0) {
         output_cup(window.y + cy, window.x + cx);
+        output_cvvis();
+    } else {
+         output_civis();
     }
 }
 
@@ -367,7 +418,38 @@ void buffer_edit_backspace (Buffer* buffer, int32_t i) {
 }
 
 void buffer_edit_move_line (Buffer* buffer, int32_t i) {
-
+    if (i < 0) {
+        i = -i;
+        while (i-- > 0) {
+            int top = buffer->cursor.line;
+            int bot = buffer->selection.line;
+            if (top > bot) {
+                int swap = top;
+                top = bot;
+                bot = swap;
+            }
+            if (top <= 0) break;
+            CharBuffer* line = array_remove(buffer->lines, top - 1);
+            array_insert(buffer->lines, bot, line);
+            buffer->cursor.line--;
+            buffer->selection.line--;
+        }
+    } else if (i > 0) {
+        while (i-- > 0) {
+            int top = buffer->cursor.line;
+            int bot = buffer->selection.line;
+            if (top > bot) {
+                int swap = top;
+                top = bot;
+                bot = swap;
+            }
+            if (bot >= buffer->lines->size - 1) break;
+            CharBuffer* line = array_remove(buffer->lines, bot + 1);
+            array_insert(buffer->lines, top, line);
+            buffer->cursor.line++;
+            buffer->selection.line++;
+        }
+    }
 }
 
 

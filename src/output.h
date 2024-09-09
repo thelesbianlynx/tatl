@@ -25,3 +25,6 @@ void output_clear ();
 void output_cnorm ();
 void output_civis ();
 void output_cvvis ();
+
+void output_underline ();
+void output_no_underline ();

@@ -28,13 +28,16 @@ void output_init () {
     }
 
     tputs(tigetstr("smcup"), 1, output_char);
+    output_str("\33[?1002h");
     output_frame();
 }
 
 void output_fini () {
     tputs(tigetstr("rmcup"), 1, output_char);
+    output_str("\33[?1002l");
     output_frame();
     tcsetattr(0, TCSANOW, &term_save);
+    printf("%d\n", buf_capacity);
 }
 
 static void expand () {
@@ -108,4 +111,12 @@ void output_civis () {
 
 void output_cvvis () {
     tputs(tparm(tigetstr("cvvis")), 1, output_char);
+}
+
+void output_underline () {
+    tputs(tparm(tigetstr("smul")), 1, output_char);
+}
+
+void output_no_underline () {
+    tputs(tparm(tigetstr("rmul")), 1, output_char);
 }

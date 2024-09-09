@@ -94,9 +94,10 @@ InputStatus nextkey (int32_t timeout, InputState* r_inputstate, int32_t* debug) 
 
         if (n >= 3 && buffer[0] == '\e' && buffer[1] == '[') {
             if (buffer[2] == 'M') {
-                // Mouse Event.
-                // ...
-                return INPUT_NONE;
+                r_inputstate->charcode = buffer[3] - 32;
+                r_inputstate->x = (uint8_t) buffer[4] - 32;
+                r_inputstate->y = (uint8_t) buffer[5] - 32;
+                return INPUT_MOUSE_MOTION;
             }
 
             for (int i = 0; i < n && i < 30; ++i) {
