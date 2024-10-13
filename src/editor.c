@@ -1,171 +1,66 @@
 #include "editor.h"
 
 #include "buffer.h"
+#include "actions.h"
 #include "input.h"
 #include "output.h"
 
 static void draw_modeline (Editor* editor, Box window);
 
 void editor_init (Editor* editor) {
-    editor->width = 0;
-    editor->height = 0;
-
     editor->buffer = buffer_create("src/editor.c");//("cat.txt");
-
+    editor->mode = MODE_NORMAL;
     editor->blink = true;
-
     editor->debug = 0;
+    editor->mstate = 256;
+    editor->mx = 0;
+    editor->my = 0;
 }
 
 void editor_fini (Editor* editor) {
     buffer_destroy(editor->buffer);
 }
 
-
 bool editor_update (Editor* editor, InputStatus status, InputState* state) {
     editor->mstate = 256;
-    if (status == INPUT_NONE) return true;
-    if (status == INPUT_ESC) return false;
 
-    if (status == INPUT_CHAR) {
-        if (state->charcode < 32) {
-            editor->debug = state->charcode;
+    Buffer* buffer = editor->buffer;
+
+    if (status == INPUT_ESC) {
+        if (editor->mode == MODE_EDIT) {
+            editor_exit_mode(editor);
         } else {
-            buffer_edit_char(editor->buffer, state->charcode, 1);
+            return false;
         }
-    }
-
-    if (status == INPUT_MOUSE_MOTION) {
+    } else if (status == INPUT_CHAR) {
+        if (editor->mode == MODE_EDIT && state->charcode >= 32) {
+            buffer_edit_char(editor->buffer, state->charcode, 1);
+        } else if (state->charcode < MAX_ACTIONS) {
+            action_fn a = actions[state->charcode];
+            if (a) a(editor, buffer, 1);
+        }
+    } else if (status == INPUT_ALT_CHAR) {
+        if (state->charcode < MAX_ALT_ACTIONS) {
+            action_fn alt_a = alt_actions[state->charcode];
+            if (alt_a) alt_a(editor, buffer, 1);
+            else {
+                action_fn a = actions[state->charcode];
+                if (a) a(editor, buffer, 1);
+            }
+        }
+    } else if (status == INPUT_MOUSE_MOTION) {
         editor->mstate = state->charcode;
         editor->mx = state->x;
         editor->my = state->y;
-    }
-
-    if (status == INPUT_ENTER) {
-        buffer_edit_line(editor->buffer, 1);
-    }
-
-    if (status == INPUT_BACKSPACE) {
-        buffer_edit_backspace(editor->buffer, 1);
-    }
-
-    if (status == INPUT_ALT_BACKSPACE || status == INPUT_DELETE) {
-        buffer_edit_delete(editor->buffer, 1);
-    }
-
-    if (status == INPUT_TAB) {
-        buffer_edit_tab(editor->buffer, 1);
-    }
-
-    if (status == INPUT_SHIFT_TAB) {
-        buffer_edit_indent(editor->buffer, -1);
-    }
-
-    if (status == INPUT_UP) {
-        buffer_cursor_line(editor->buffer, -1, false);
-    }
-
-    if (status == INPUT_DOWN) {
-        buffer_cursor_line(editor->buffer,  1, false);
-    }
-
-    if (status == INPUT_LEFT) {
-        buffer_cursor_char(editor->buffer, -1, false);
-    }
-
-    if (status == INPUT_RIGHT) {
-        buffer_cursor_char(editor->buffer,  1, false);
-    }
-
-    if (status == INPUT_SHIFT_UP) {
-        buffer_cursor_line(editor->buffer, -1, true);
-    }
-
-    if (status == INPUT_SHIFT_DOWN) {
-        buffer_cursor_line(editor->buffer,  1, true);
-    }
-
-    if (status == INPUT_SHIFT_LEFT) {
-        buffer_cursor_char(editor->buffer, -1, true);
-    }
-
-    if (status == INPUT_SHIFT_RIGHT) {
-        buffer_cursor_char(editor->buffer,  1, true);
-    }
-
-    if (status == INPUT_CTRL_UP) {
-        buffer_edit_move_line(editor->buffer, -1);
-    }
-
-    if (status == INPUT_CTRL_DOWN) {
-        buffer_edit_move_line(editor->buffer, 1);
-    }
-
-    if (status == INPUT_CTRL_LEFT) {
-        buffer_cursor_word(editor->buffer, 1, -1, false);
-    }
-
-    if (status == INPUT_CTRL_RIGHT) {
-        buffer_cursor_word(editor->buffer, 1, 1, false);
-    }
-
-    if (status == INPUT_SHIFT_CTRL_UP) {
-        // Magic.
-    }
-
-    if (status == INPUT_SHIFT_CTRL_DOWN) {
-        // Magic.
-    }
-
-    if (status == INPUT_SHIFT_CTRL_LEFT) {
-        buffer_cursor_word(editor->buffer, 1, -1, true);
-    }
-
-    if (status == INPUT_SHIFT_CTRL_RIGHT) {
-        buffer_cursor_word(editor->buffer, 1, 1, true);
-    }
-
-    if (status == INPUT_ALT_UP) {
-        buffer_cursor_paragraph(editor->buffer, -1, false);
-    }
-
-    if (status == INPUT_ALT_DOWN) {
-        buffer_cursor_paragraph(editor->buffer, 1, false);
-    }
-
-    if (status == INPUT_ALT_LEFT) {
-        buffer_cursor_line_begin(editor->buffer, false);
-    }
-
-    if (status == INPUT_ALT_RIGHT) {
-        buffer_cursor_line_end(editor->buffer, false);
-    }
-
-    if (status == INPUT_SHIFT_ALT_UP) {
-        buffer_cursor_paragraph(editor->buffer, -1, true);
-    }
-
-    if (status == INPUT_SHIFT_ALT_DOWN) {
-        buffer_cursor_paragraph(editor->buffer, 1, true);
-    }
-
-    if (status == INPUT_SHIFT_ALT_LEFT) {
-        buffer_cursor_line_begin(editor->buffer, true);
-    }
-
-    if (status == INPUT_SHIFT_ALT_RIGHT) {
-        buffer_cursor_line_end(editor->buffer, true);
+    } else {
+        action_fn a = fixed_actions[status];
+        if (a) a(editor, buffer, 1);
     }
 
     return true;
 }
 
 void editor_draw (Editor* editor, int32_t width, int32_t height, int32_t* debug) {
-    editor->width = width;
-    editor->height = height;
-
-    editor->blink = !editor->blink;
-
     output_setfg(15);
     output_setbg(0);
     output_clear();
@@ -186,6 +81,18 @@ void editor_draw (Editor* editor, int32_t width, int32_t height, int32_t* debug)
     output_frame();
 }
 
+void editor_enter_mode (Editor* editor, uint32_t mode) {
+    if (mode == MODE_EDIT) {
+        editor->mode = MODE_EDIT;
+    }
+}
+
+void editor_exit_mode (Editor* editor) {
+    editor->mode = MODE_NORMAL;
+}
+
+
+
 static
 void draw_modeline (Editor* editor, Box window) {
     int len = window.width + 1;
@@ -195,9 +102,15 @@ void draw_modeline (Editor* editor, Box window) {
 
     output_cup(window.y, window.x);
     output_setfg(15);
-    output_setbg(1);
-    snprintf(buf, len, " %-*s", 7, "Normal");
-    output_str(buf);
+    if (editor->mode == MODE_NORMAL) {
+        output_setbg(1);
+        snprintf(buf, len, " %-*s", 7, "Normal");
+        output_str(buf);
+    } else if (editor->mode == MODE_EDIT) {
+        output_setbg(4);
+        snprintf(buf, len, " %-*s", 7, " Edit ");
+        output_str(buf);
+    }
 
     char* langmode = "Text";
     int langlen = strlen(langmode);

@@ -123,7 +123,7 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
         output_setbg(8);
 
         int lineno = i + buffer->scroll_line;
-        bool draw_cursor = false;
+        //bool draw_cursor = false;
 
         //End of File.
         if (lineno >= buffer->lines->size) {
@@ -163,7 +163,7 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
                 output_setbg(in_selection ? 14 : 15);
                 cx = col + ln_width + 1;
                 cy = i + 1;
-                draw_cursor = true;
+                //draw_cursor = true;
             }
 
             if (buffer->selection.line == lineno && buffer->selection.col == j) {
@@ -175,18 +175,20 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
             //     output_underline();
             // }
 
-            if (line->buffer[j] > 32) {
-                output_char(line->buffer[j]);
-                col++;
-            } else if (line->buffer[j] == '\t') {
-                int32_t t = buffer->tab_width - MOD(col, buffer->tab_width);
-                for (int k = 0; k < t; k++) {
+            if (j < line->size) {
+                if (line->buffer[j] > 32) {
+                    output_char(line->buffer[j]);
+                    col++;
+                } else if (line->buffer[j] == '\t') {
+                    int32_t t = buffer->tab_width - MOD(col, buffer->tab_width);
+                    for (int k = 0; k < t; k++) {
+                        output_char(' ');
+                        col++;
+                    }
+                } else {
                     output_char(' ');
                     col++;
                 }
-            } else if (j < line->size) {
-                output_char(' ');
-                col++;
             }
 
             // if (draw_cursor) {

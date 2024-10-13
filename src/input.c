@@ -76,10 +76,8 @@ InputStatus nextkey (int32_t timeout, InputState* r_inputstate, int32_t* debug) 
             if (c == 13)  return INPUT_ENTER;
             if (c == 27)  return INPUT_ESC;
             if (c == 127) return INPUT_BACKSPACE;
-            if (c >= 32) {
-                r_inputstate->charcode = c;
-                return INPUT_CHAR;
-            }
+            r_inputstate->charcode = c;
+            return INPUT_CHAR;
         }
 
         if (n == 2 && buffer[0] == '\e') {
