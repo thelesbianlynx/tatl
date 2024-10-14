@@ -1,6 +1,7 @@
 #include "editor.h"
 
 #include "buffer.h"
+#include "charbuffer.h"
 #include "actions.h"
 #include "input.h"
 #include "output.h"
@@ -10,6 +11,7 @@ static void draw_modeline (Editor* editor, Box window);
 void editor_init (Editor* editor) {
     editor->buffer = buffer_create("src/editor.c");//("cat.txt");
     editor->mode = MODE_NORMAL;
+    editor->clipboard = charbuffer_create();
     editor->blink = true;
     editor->debug = 0;
     editor->mstate = 256;
@@ -91,6 +93,9 @@ void editor_exit_mode (Editor* editor) {
     editor->mode = MODE_NORMAL;
 }
 
+CharBuffer* editor_get_clipboard (Editor* editor) {
+    return editor->clipboard;
+}
 
 
 static

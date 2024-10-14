@@ -12,6 +12,8 @@ struct editor {
 
     uint32_t mode;
 
+    CharBuffer* clipboard;
+
     bool blink;
 
     int32_t debug;
@@ -30,3 +32,5 @@ void editor_draw (Editor* editor, int32_t width, int32_t height, int32_t* debug)
 
 void editor_enter_mode (Editor* editor, uint32_t mode);
 void editor_exit_mode (Editor* editor);
+
+CharBuffer* editor_get_clipboard (Editor* editor);

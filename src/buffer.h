@@ -83,11 +83,8 @@ void buffer_undo (Buffer* buffer, int32_t i);
 void buffer_redo (Buffer* buffer, int32_t i);
 
 
-uint32_t buffer_selection_get_length (Buffer* buffer);
+bool buffer_selection_exist (Buffer* buffer);
 
-char* buffer_selection_get_text (Buffer* buffer);
+void buffer_selection_get_text (Buffer* buffer, CharBuffer* dst);
 
-
-char* buffer_clipboard_get_text (Buffer* buffer, uint32_t i);
-
-void buffer_clipboard_set_text (Buffer* buffer, uint32_t i, const char* text);
+void buffer_selection_cut_text (Buffer* buffer, CharBuffer* dst);

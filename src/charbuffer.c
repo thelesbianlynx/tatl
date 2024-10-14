@@ -18,6 +18,12 @@ void charbuffer_destroy (CharBuffer* cb) {
     free(cb);
 }
 
+// Clear buffer
+//  - Set size to 0.
+void charbuffer_clear (CharBuffer* cb) {
+    cb->size = 0;
+}
+
 // Expand Char Buffer.
 //
 static void charbuffer_expand (CharBuffer* cb, uint32_t new_capacity) {

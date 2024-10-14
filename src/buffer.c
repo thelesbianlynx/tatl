@@ -268,8 +268,17 @@ void buffer_edit_char (Buffer* buffer, uint32_t ch, int32_t i) {
 }
 
 void buffer_edit_text (Buffer* buffer, CharBuffer* text, int32_t i) {
-
-    // ...
+    delete_selection(buffer);
+    while (i-- > 0) {
+        for (int j = 0; j < text->size; j++) {
+            uint32_t ch = text->buffer[j];
+            if (ch == '\t' || ch >= 32) {
+                buffer_edit_char(buffer, ch, 1);
+            } else if (ch == '\n') {
+                buffer_edit_line(buffer, 1);
+            }
+        }
+    }
 }
 
 void buffer_edit_line (Buffer* buffer, int32_t i) {
@@ -648,6 +657,47 @@ void buffer_cursor_line_end (Buffer* buffer, bool sel) {
         buffer->selection = buffer->cursor;
     }
 }
+
+
+bool buffer_selection_exist (Buffer* buffer) {
+    return !(buffer->cursor.line == buffer->selection.line && buffer->cursor.col == buffer->selection.col);
+}
+
+void buffer_selection_get_text (Buffer* buffer, CharBuffer* dst) {
+    Point begin = buffer->cursor, end = buffer->selection;
+
+    if (begin.line == end.line) {
+        if (begin.col > end.col) {
+            begin = buffer->selection;
+            end = buffer->cursor;
+        }
+        CharBuffer* line = buffer->lines->data[begin.line];
+        charbuffer_get_substr(line, dst, begin.col, end.col);
+    } else {
+        if (begin.line > end.line) {
+            begin = buffer->selection;
+            end = buffer->cursor;
+        }
+
+        CharBuffer* line_begin = buffer->lines->data[begin.line];
+        charbuffer_get_suffix(line_begin, dst, begin.col);
+
+        for (int i = begin.line + 1; i < end.line - 1; i++) {
+            CharBuffer* line = buffer->lines->data[i];
+            charbuffer_achars(dst, line);
+        }
+
+        CharBuffer* line_end = buffer->lines->data[end.line];
+        charbuffer_get_prefix(line_end, dst, end.col);
+    }
+}
+
+void buffer_selection_cut_text (Buffer* buffer, CharBuffer* dst) {
+    buffer_selection_get_text(buffer, dst);
+    delete_selection(buffer);
+}
+
+
 
 static
 int32_t cursor_real_col (Buffer* buffer, CharBuffer* line, int32_t fake_col) {

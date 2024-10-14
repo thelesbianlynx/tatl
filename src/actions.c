@@ -6,6 +6,7 @@
 #include "buffer.h"
 #include "charbuffer.h"
 
+#define CTRL(CH) (CH - 'A' + 1)
 
 // - Action Arrays - //
 
@@ -66,6 +67,14 @@ action_fn actions[MAX_ACTIONS] = {
     ['M'] = a_move_line_up,
 
     ['e'] = a_edit,
+
+    ['x'] = a_cut,
+    ['c'] = a_copy,
+    ['v'] = a_paste,
+
+    [CTRL('X')] = a_cut,
+    [CTRL('C')] = a_copy,
+    [CTRL('V')] = a_paste,
 };
 
 // Alt Actions.
@@ -288,9 +297,22 @@ void a_prev_tab (Editor* editor, Buffer* buffer, int32_t count);
 
 // - Cut, Copy and Paste - //
 
-void a_cut (Editor* editor, Buffer* buffer, int32_t count);
-void a_copy (Editor* editor, Buffer* buffer, int32_t count);
-void a_paste (Editor* editor, Buffer* buffer, int32_t count);
+void a_cut (Editor* editor, Buffer* buffer, int32_t count) {
+    CharBuffer* clipboard = editor_get_clipboard(editor);
+    charbuffer_clear(clipboard);
+    buffer_selection_cut_text(buffer, clipboard);
+}
+
+void a_copy (Editor* editor, Buffer* buffer, int32_t count) {
+    CharBuffer* clipboard = editor_get_clipboard(editor);
+    charbuffer_clear(clipboard);
+    buffer_selection_get_text(buffer, clipboard);
+}
+
+void a_paste (Editor* editor, Buffer* buffer, int32_t count) {
+    CharBuffer* clipboard = editor_get_clipboard(editor);
+    buffer_edit_text(buffer, clipboard, count);
+}
 
 // - Undo / Redo - //
 

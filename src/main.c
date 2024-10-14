@@ -38,5 +38,7 @@ int main () {
 
     editor_fini(&editor);
 
+    output_cnorm();
+
     output_fini();
 }
