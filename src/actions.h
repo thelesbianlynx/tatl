@@ -101,7 +101,7 @@ void a_move_line_down (Editor* editor, Buffer* buffer, int32_t count);
 // - Edit Mode - //
 
 void a_edit (Editor* editor, Buffer* buffer, int32_t count);
-void a_typeover (Editor* editor, Buffer* buffer, int32_t count);
+void a_escape (Editor* editor, Buffer* buffer, int32_t count);
 
 // - Buffer Actions - //
 

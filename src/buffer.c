@@ -9,32 +9,40 @@ static int32_t cursor_real_col (Buffer* buffer, CharBuffer* line, int32_t fake_c
 static void update_mem (Buffer* buffer);
 static void update_scroll (Buffer* buffer);
 
-Buffer* buffer_create (char* file) {
+Buffer* buffer_create (const char* title) {
     Buffer* buffer = malloc(sizeof(Buffer));
 
     buffer->lines = array_create();
+    array_add(buffer->lines, charbuffer_create());
 
     buffer->cursor = buffer->selection = (Point) {0,0};
 
     buffer->col_mem = 0;
+    buffer->scroll_damage = 0;
     buffer->scroll_line = 0;
     buffer->scroll_offset = 0;
-    buffer->scroll_damage = 0;
+    buffer->scroll_pages = 0;
 
-    buffer->filename = file;
+    buffer->title = strdup(title);
+    buffer->filename = NULL;
+
+    buffer->alt_mode = false;
+    buffer->page_mode = false;
+    buffer->block_mode = false;
+    buffer->raise_mode = false;
 
     buffer->tab_width = 4;
     buffer->hard_tabs = false;
 
     // Load contents.
-    FILE* f = fopen(file, "r");
-    for (;;) {
-        CharBuffer* line = charbuffer_create();
-        bool b = charbuffer_read_line(line, f);
-        array_add (buffer->lines, line);
-        if (!b) break;
-    }
-    fclose(f);
+    // FILE* f = fopen(file, "r");
+    // for (;;) {
+    //     CharBuffer* line = charbuffer_create();
+    //     bool b = charbuffer_read_line(line, f);
+    //     array_add (buffer->lines, line);
+    //     if (!b) break;
+    // }
+    // fclose(f);
 
     return buffer;
 }
@@ -44,16 +52,40 @@ void buffer_destroy (Buffer* buffer) {
         charbuffer_destroy(buffer->lines->data[i]);
     }
     array_destroy(buffer->lines);
+    free(buffer->title);
+    free(buffer->filename);
     free(buffer);
 }
 
-void buffer_save (Buffer* buffer) {
+void buffer_load (Buffer* buffer, const char* filename) {
+    for (int i = 0; i < buffer->lines->size; ++i) {
+        charbuffer_destroy(buffer->lines->data[i]);
+    }
+    array_clear(buffer->lines);
 
+    FILE* f = fopen(filename, "r");
+    for (;;) {
+        CharBuffer* line = charbuffer_create();
+        bool b = charbuffer_read_line(line, f);
+        array_add (buffer->lines, line);
+        if (!b) break;
+    }
+    fclose(f);
+
+    free(buffer->filename);
+    buffer->filename = strdup(filename);
+    free(buffer->title);
+    buffer->title = strdup(filename);
+}
+
+bool buffer_save (Buffer* buffer) {
+
+    return false;
 }
 
 void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint32_t my) {
     // Line Number Width.
-    int32_t ln_width = (int) log10(buffer->lines->size) + 3;
+    int32_t ln_width = (int) log10(buffer->lines->size + 1) + 3;
 
     // Final Cursor Position.
     int32_t cx = -1,  cy = -1;
@@ -113,7 +145,7 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
     output_setfg(0);
     output_setbg(7);
     char title_buf[window.width + 1];
-    snprintf(title_buf, window.width + 1, "%*c%-*s", ln_width - 2, ' ', window.width - ln_width + 2, buffer->filename);
+    snprintf(title_buf, window.width + 1, "%*c%-*s", ln_width - 2, ' ', window.width - ln_width + 2, buffer->title);
     output_str(title_buf);
 
     // Buffer.
@@ -142,7 +174,7 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
 
         // Line Number.
         char ln_buf[ln_width + 1];
-        snprintf(ln_buf, ln_width + 1, "%*d ", ln_width - 1 , lineno);
+        snprintf(ln_buf, ln_width + 1, "%*d ", ln_width - 1 , lineno + 1);
         output_str(ln_buf);
 
         // Line Text.
@@ -282,6 +314,7 @@ void buffer_edit_text (Buffer* buffer, CharBuffer* text, int32_t i) {
 }
 
 void buffer_edit_line (Buffer* buffer, int32_t i) {
+    if (buffer->alt_mode) return;
     delete_selection(buffer);
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
@@ -299,6 +332,7 @@ void buffer_edit_line (Buffer* buffer, int32_t i) {
 }
 
 void buffer_edit_tab (Buffer* buffer, int32_t i) {
+    if (buffer->alt_mode) return;
     if (buffer->cursor.line == buffer->selection.line && buffer->cursor.col == buffer->selection.col) {
         if (buffer->hard_tabs) {
             buffer_edit_char(buffer, '\t', i);
@@ -314,6 +348,7 @@ void buffer_edit_tab (Buffer* buffer, int32_t i) {
 }
 
 void buffer_edit_indent (Buffer* buffer, int32_t i) {
+    if (buffer->alt_mode) return;
     Point begin = buffer->cursor, end = buffer->selection;
     if (begin.line > end.line) {
         begin = buffer->selection;
@@ -391,6 +426,7 @@ void buffer_edit_delete (Buffer* buffer, int32_t i) {
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         if (buffer->cursor.col >= line->size) {
+            if (buffer->alt_mode) return;
             if (buffer->cursor.line < buffer->lines->size - 1) {
                 CharBuffer* nextline = array_remove(buffer->lines, buffer->cursor.line + 1);
                 charbuffer_achars(line, nextline);
@@ -409,6 +445,7 @@ void buffer_edit_backspace (Buffer* buffer, int32_t i) {
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         if (buffer->cursor.col <= 0) {
+            if (buffer->alt_mode) return;
             if (buffer->cursor.line > 0) {
                 CharBuffer* prevline = buffer->lines->data[buffer->cursor.line - 1];
                 buffer->cursor.col = prevline->size;
@@ -429,6 +466,7 @@ void buffer_edit_backspace (Buffer* buffer, int32_t i) {
 }
 
 void buffer_edit_move_line (Buffer* buffer, int32_t i) {
+    if (buffer->alt_mode) return;
     if (i < 0) {
         i = -i;
         while (i-- > 0) {
@@ -467,6 +505,7 @@ void buffer_edit_move_line (Buffer* buffer, int32_t i) {
 
 void buffer_cursor_goto (Buffer* buffer, int32_t row, int32_t col, bool sel) {
     if (row >= buffer->lines->size) row = buffer->lines->size - 1;
+    if (buffer->alt_mode) row = 0;
 
     CharBuffer* line = buffer->lines->data[row];
     if (col > line->size) col = line->size;
@@ -483,6 +522,7 @@ void buffer_cursor_goto (Buffer* buffer, int32_t row, int32_t col, bool sel) {
 }
 
 void buffer_cursor_line (Buffer* buffer, int32_t i, bool sel) {
+    if (buffer->alt_mode) return;
     buffer->cursor.line += i;
     if (buffer->cursor.line <= 0) buffer->cursor.line = 0;
     if (buffer->cursor.line >= buffer->lines->size) buffer->cursor.line = buffer->lines->size - 1;
@@ -506,9 +546,8 @@ void buffer_cursor_char (Buffer* buffer, int32_t i, bool sel) {
         int c = (int) buffer->cursor.col + d;
 
         if (c < 0) {
-            if (buffer->cursor.line <= 0) {
-                break;
-            }
+            if (buffer->alt_mode) break;
+            if (buffer->cursor.line <= 0) break;
             buffer->cursor.line--;
             CharBuffer* line = buffer->lines->data[buffer->cursor.line];
             buffer->cursor.col = line->size;
@@ -517,9 +556,8 @@ void buffer_cursor_char (Buffer* buffer, int32_t i, bool sel) {
 
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         if (c > line->size) {
-            if (buffer->cursor.line >= buffer->lines->size - 1) {
-                break;
-            }
+            if (buffer->alt_mode) break;
+            if (buffer->cursor.line >= buffer->lines->size - 1) break;
             buffer->cursor.line++;
             buffer->cursor.col = 0;
             continue;
@@ -528,7 +566,6 @@ void buffer_cursor_char (Buffer* buffer, int32_t i, bool sel) {
         buffer->cursor.col = c;
     }
 
-    //buffer->col_mem = cursor_fake_col(buffer, buffer->lines->data[buffer->cursor.line], buffer->cursor.col);
     update_mem(buffer);
     update_scroll(buffer);
 
@@ -607,7 +644,8 @@ void buffer_cursor_word (Buffer* buffer, int32_t lead, int32_t i, bool sel) {
 }
 
 void buffer_cursor_paragraph (Buffer* buffer, int32_t i, bool sel) {
-
+    if (buffer->alt_mode) return;
+    
 }
 
 void buffer_cursor_home (Buffer* buffer, bool sel) {
@@ -659,11 +697,105 @@ void buffer_cursor_line_end (Buffer* buffer, bool sel) {
 }
 
 
+
+void buffer_select_all (Buffer* buffer) {
+    buffer_cursor_goto(buffer, 0, 0, false);
+    buffer_cursor_goto(buffer, INT_MAX, INT_MAX, true);
+
+    update_mem(buffer);
+    update_scroll(buffer);
+}
+
+void buffer_select_word (Buffer* buffer) {
+    if (buffer_selection_exist(buffer)) {
+        buffer_selection_clear(buffer);
+        return;
+    }
+
+    CharBuffer* line = buffer->lines->data[buffer->cursor.line];
+    uint32_t type = chartype(line->buffer[buffer->cursor.col]);
+
+    int32_t min = buffer->cursor.col;
+    int32_t max = min;
+
+    for (;;) {
+        if (min <= 0) break;
+        if (chartype(line->buffer[min - 1]) != type) break;
+        min--;
+    }
+
+    for (;;) {
+        if (max >= line->size) break;
+        if (chartype(line->buffer[max]) != type) break;
+        max++;
+    }
+
+    buffer->cursor.col = max;
+    buffer->selection.col = min;
+
+    update_mem(buffer);
+    update_scroll(buffer);
+}
+
+void buffer_select_line (Buffer* buffer) {
+    if (buffer->cursor.line == buffer->selection.line) {
+        CharBuffer* line = buffer->lines->data[buffer->cursor.line];
+        if (buffer->cursor.col >= buffer->selection.col) {
+            if (buffer->cursor.col < line->size || buffer->selection.col > 0) {
+                buffer->cursor.col = line->size;
+                buffer->selection.col = 0;
+            } else {
+                // Clamp to non-whitespace.
+                // ...
+            }
+        } else {
+            if (buffer->cursor.col > 0 || buffer->selection.col < line->size) {
+                buffer->cursor.col = 0;
+                buffer->selection.col = line->size;
+            } else {
+                // Clamp to non-whitespace.
+                // ...
+            }
+        }
+    } else if (buffer->cursor.line > buffer->selection.line) {
+        CharBuffer* cline = buffer->lines->data[buffer->cursor.line];
+        //CharBuffer* sline = buffer->lines->data[buffer->selection.line];
+        if (buffer->cursor.col < cline->size || buffer->selection.col > 0) {
+            buffer->cursor.col = cline->size;
+            buffer->selection.col = 0;
+        } else {
+            // Clamp to non-whitespace.
+            // ...
+        }
+    } else {
+        //CharBuffer* cline = buffer->lines->data[buffer->cursor.line];
+        CharBuffer* sline = buffer->lines->data[buffer->selection.line];
+        if (buffer->cursor.col > 0 || buffer->selection.col < sline->size) {
+            buffer->cursor.col = 0;
+            buffer->selection.col = sline->size;
+        } else {
+            // Clamp to non-whitespace.
+            // ...
+        }
+    }
+}
+
+
 bool buffer_selection_exist (Buffer* buffer) {
     return !(buffer->cursor.line == buffer->selection.line && buffer->cursor.col == buffer->selection.col);
 }
 
-void buffer_selection_get_text (Buffer* buffer, CharBuffer* dst) {
+void buffer_selection_swap (Buffer* buffer) {
+    Point tmp = buffer->cursor;
+    buffer->cursor = buffer->selection;
+    buffer->selection = tmp;
+}
+
+void buffer_selection_clear (Buffer* buffer) {
+    buffer->selection = buffer->cursor;
+}
+
+void buffer_selection_copy (Buffer* buffer, CharBuffer* dst) {
     Point begin = buffer->cursor, end = buffer->selection;
 
     if (begin.line == end.line) {
@@ -682,21 +814,35 @@ void buffer_selection_get_text (Buffer* buffer, CharBuffer* dst) {
         CharBuffer* line_begin = buffer->lines->data[begin.line];
         charbuffer_get_suffix(line_begin, dst, begin.col);
 
-        for (int i = begin.line + 1; i < end.line - 1; i++) {
+        for (int i = begin.line + 1; i < end.line; i++) {
             CharBuffer* line = buffer->lines->data[i];
+            charbuffer_achar(dst, '\n');
             charbuffer_achars(dst, line);
         }
 
         CharBuffer* line_end = buffer->lines->data[end.line];
+        charbuffer_achar(dst, '\n');
         charbuffer_get_prefix(line_end, dst, end.col);
     }
 }
 
-void buffer_selection_cut_text (Buffer* buffer, CharBuffer* dst) {
-    buffer_selection_get_text(buffer, dst);
+void buffer_selection_cut (Buffer* buffer, CharBuffer* dst) {
+    buffer_selection_copy(buffer, dst);
     delete_selection(buffer);
 }
 
+void buffer_selection_duplicate (Buffer* buffer, int32_t i) {
+
+}
+
+void buffer_selection_delete_whitespace (Buffer* buffer) {
+
+}
+
+
+void buffer_undo (Buffer* buffer, int32_t i) {}
+
+void buffer_redo (Buffer* buffer, int32_t i) {}
 
 
 static

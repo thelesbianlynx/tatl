@@ -20,6 +20,7 @@ void array_destroy (Array* array);
 void array_destroy_callback (Array* array, array_callback callback);
 
 void array_add (Array* array, void* item);
+void array_clear (Array* array);
 
 void  array_push (Array* array, void* item);
 void* array_pop  (Array* array);

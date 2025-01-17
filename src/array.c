@@ -43,6 +43,10 @@ void array_add (Array* array, void* item) {
     array_push(array, item);
 }
 
+void array_clear (Array* array) {
+    array->size = 0;
+}
+
 void array_push (Array* array, void* item) {
     if (array->size >= array->capacity) array_expand(array);
 

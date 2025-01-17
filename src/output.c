@@ -28,16 +28,16 @@ void output_init () {
     }
 
     tputs(tigetstr("smcup"), 1, output_char);
-    output_str("\33[?1002h");
+    output_str("\33[?1002h"); // Mouse On.
     output_frame();
 }
 
 void output_fini () {
     tputs(tigetstr("rmcup"), 1, output_char);
-    output_str("\33[?1002l");
+    output_str("\33[?1002l"); // Mouse Off.
     output_frame();
     tcsetattr(0, TCSANOW, &term_save);
-    printf("%d\n", buf_capacity);
+    //printf("%d\n", buf_capacity);
 }
 
 static void expand () {

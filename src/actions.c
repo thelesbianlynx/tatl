@@ -54,19 +54,32 @@ action_fn actions[MAX_ACTIONS] = {
     // ['{'] = a_select_to_opening,
     // ['}'] = a_select_to_closing,
 
+    [CTRL('A')] = a_select_all,
     ['s'] = a_select_word,
     ['d'] = a_select_line,
 
     ['S'] = a_select_swap,
-    // ['D'] = a_duplicate,
+    ['D'] = a_duplicate,
 
     ['X'] = a_delete,
-    // ['W'] = a_delete_trailing_whitespace,
+    ['W'] = a_delete_trailing_whitespace,
+
+    [' '] = a_space,
+    [CTRL('M')] = a_newline,
+
+    [CTRL('I')] = a_tab,
+    ['y'] = a_indent,
+    ['Y'] = a_unindent,
 
     ['m'] = a_move_line_down,
     ['M'] = a_move_line_up,
 
     ['e'] = a_edit,
+    [CTRL('E')] = a_escape,
+
+    [CTRL('T')] = a_new_tab,
+    ['t'] = a_next_tab,
+    ['T'] = a_prev_tab,
 
     ['x'] = a_cut,
     ['c'] = a_copy,
@@ -75,6 +88,9 @@ action_fn actions[MAX_ACTIONS] = {
     [CTRL('X')] = a_cut,
     [CTRL('C')] = a_copy,
     [CTRL('V')] = a_paste,
+
+    [CTRL('Z')] = a_undo,
+    [CTRL('Y')] = a_redo,
 };
 
 // Alt Actions.
@@ -82,7 +98,7 @@ action_fn alt_actions[MAX_ALT_ACTIONS] = {
 
 };
 
-// Ctrl Actions.
+// Fixed Function Actions.
 action_fn fixed_actions[MAX_FIXED_ACTIONS] = {
     [INPUT_TAB] = a_tab,
     [INPUT_ENTER] = a_newline,
@@ -192,7 +208,7 @@ void a_select_right (Editor* editor, Buffer* buffer, int32_t count) {
 }
 
 void a_select_word (Editor* editor, Buffer* buffer, int32_t count) {
-    //buffer_select_word(buffer);
+    buffer_select_word(buffer);
 }
 void a_select_word_left (Editor* editor, Buffer* buffer, int32_t count) {
     int32_t lead = 1; // ...
@@ -204,7 +220,7 @@ void a_select_word_right (Editor* editor, Buffer* buffer, int32_t count) {
 }
 
 void a_select_line (Editor* editor, Buffer* buffer, int32_t count) {
-    //buffer_select_line(buffer);
+    buffer_select_line(buffer);
 }
 void a_select_line_begin (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_cursor_line_begin(buffer, true);
@@ -214,7 +230,7 @@ void a_select_line_end (Editor* editor, Buffer* buffer, int32_t count) {
 }
 
 void a_select_all (Editor* editor, Buffer* buffer, int32_t count) {
-    //buffer_select_all(buffer);
+    buffer_select_all(buffer);
 }
 void a_select_buffer_begin (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_cursor_home(buffer, true);
@@ -235,7 +251,7 @@ void a_select_to_opening (Editor* editor, Buffer* buffer, int32_t count);
 void a_select_to_closing (Editor* editor, Buffer* buffer, int32_t count);
 
 void a_select_swap (Editor* editor, Buffer* buffer, int32_t count) {
-    //buffer_selection_swap(buffer);
+    buffer_selection_swap(buffer);
 }
 
 // - Edit Actions - //
@@ -254,6 +270,7 @@ void a_space (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_edit_char(buffer, ' ', count);
 }
 void a_newline (Editor* editor, Buffer* buffer, int32_t count) {
+    if (editor_confirm(editor)) return;
     buffer_edit_line(buffer, count);
 }
 
@@ -263,9 +280,13 @@ void a_delete (Editor* editor, Buffer* buffer, int32_t count) {
 void a_backspace (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_edit_backspace(buffer, count);
 }
-void a_delete_trailing_whitespace (Editor* editor, Buffer* buffer, int32_t count);
+void a_delete_trailing_whitespace (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_selection_delete_whitespace(buffer);
+}
 
-void a_duplicate (Editor* editor, Buffer* buffer, int32_t count);
+void a_duplicate (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_selection_duplicate(buffer, count);
+}
 
 void a_move_line_up (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_edit_move_line(buffer, -count);
@@ -277,9 +298,11 @@ void a_move_line_down (Editor* editor, Buffer* buffer, int32_t count) {
 // - Edit Mode - //
 
 void a_edit (Editor* editor, Buffer* buffer, int32_t count) {
-    editor_enter_mode(editor, MODE_EDIT);
+    editor_edit_mode(editor);
 }
-void a_typeover (Editor* editor, Buffer* buffer, int32_t count);
+void a_escape (Editor* editor, Buffer* buffer, int32_t count) {
+    editor_escape(editor);
+}
 
 // - Buffer Actions - //
 
@@ -291,22 +314,28 @@ void a_save (Editor* editor, Buffer* buffer, int32_t count);
 void a_save_all (Editor* editor, Buffer* buffer, int32_t count);
 void a_save_duplicate (Editor* editor, Buffer* buffer, int32_t count);
 
-void a_new_tab (Editor* editor, Buffer* buffer, int32_t count);
-void a_next_tab (Editor* editor, Buffer* buffer, int32_t count);
-void a_prev_tab (Editor* editor, Buffer* buffer, int32_t count);
+void a_new_tab (Editor* editor, Buffer* buffer, int32_t count) {
+    editor_new(editor);
+}
+void a_next_tab (Editor* editor, Buffer* buffer, int32_t count) {
+    editor_buffer_next(editor);
+}
+void a_prev_tab (Editor* editor, Buffer* buffer, int32_t count) {
+    editor_buffer_prev(editor);
+}
 
 // - Cut, Copy and Paste - //
 
 void a_cut (Editor* editor, Buffer* buffer, int32_t count) {
     CharBuffer* clipboard = editor_get_clipboard(editor);
     charbuffer_clear(clipboard);
-    buffer_selection_cut_text(buffer, clipboard);
+    buffer_selection_cut(buffer, clipboard);
 }
 
 void a_copy (Editor* editor, Buffer* buffer, int32_t count) {
     CharBuffer* clipboard = editor_get_clipboard(editor);
     charbuffer_clear(clipboard);
-    buffer_selection_get_text(buffer, clipboard);
+    buffer_selection_copy(buffer, clipboard);
 }
 
 void a_paste (Editor* editor, Buffer* buffer, int32_t count) {
@@ -316,8 +345,12 @@ void a_paste (Editor* editor, Buffer* buffer, int32_t count) {
 
 // - Undo / Redo - //
 
-void a_undo (Editor* editor, Buffer* buffer, int32_t count);
-void a_redo (Editor* editor, Buffer* buffer, int32_t count);
+void a_undo (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_undo(buffer, count);
+}
+void a_redo (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_redo(buffer, count);
+}
 
 // - Find and Replace - //
 

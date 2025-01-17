@@ -5,7 +5,6 @@
 
 struct point {
     int32_t line, col;
-
 };
 
 struct buffer {
@@ -16,11 +15,18 @@ struct buffer {
 
     int32_t col_mem;
 
+    bool scroll_damage;
     int32_t scroll_line;
     int32_t scroll_offset;
-    bool scroll_damage;
+    int32_t scroll_pages;
 
+    char* title;
     char* filename;
+
+    bool alt_mode;
+    bool page_mode;
+    bool block_mode;
+    bool raise_mode;
 
     int32_t tab_width;
     bool hard_tabs;
@@ -33,11 +39,13 @@ struct buffer {
 };
 
 
-Buffer* buffer_create (char* file);
+Buffer* buffer_create (const char* title);
 
 void buffer_destroy (Buffer* buffer);
 
-void buffer_save (Buffer* buffer);
+void buffer_load (Buffer* buffer, const char* file);
+
+bool buffer_save (Buffer* buffer);
 
 void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint32_t my);
 
@@ -78,13 +86,28 @@ void buffer_cursor_line_begin (Buffer* buffer, bool sel);
 void buffer_cursor_line_end (Buffer* buffer, bool sel);
 
 
-void buffer_undo (Buffer* buffer, int32_t i);
+void buffer_select_all (Buffer* buffer);
 
-void buffer_redo (Buffer* buffer, int32_t i);
+void buffer_select_word (Buffer* buffer);
+
+void buffer_select_line (Buffer* buffer);
 
 
 bool buffer_selection_exist (Buffer* buffer);
 
-void buffer_selection_get_text (Buffer* buffer, CharBuffer* dst);
+void buffer_selection_swap (Buffer* buffer);
 
-void buffer_selection_cut_text (Buffer* buffer, CharBuffer* dst);
+void buffer_selection_clear (Buffer* buffer);
+
+void buffer_selection_cut (Buffer* buffer, CharBuffer* dst);
+
+void buffer_selection_copy (Buffer* buffer, CharBuffer* dst);
+
+void buffer_selection_duplicate (Buffer* buffer, int32_t i);
+
+void buffer_selection_delete_whitespace (Buffer* buffer);
+
+
+void buffer_undo (Buffer* buffer, int32_t i);
+
+void buffer_redo (Buffer* buffer, int32_t i);
