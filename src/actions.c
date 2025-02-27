@@ -12,6 +12,35 @@
 
 // Regular Actions.
 action_fn actions[MAX_ACTIONS] = {
+
+    // -- CTRL Actions -- //
+
+    [CTRL('N')] = a_new,
+    [CTRL('O')] = a_open,
+    [CTRL('S')] = a_save,
+
+    [CTRL('Q')] = a_quit,
+    [CTRL('W')] = a_close,
+
+    [CTRL('A')] = a_select_all,
+    [CTRL('I')] = a_tab,
+    [CTRL('M')] = a_newline,
+
+    [CTRL('X')] = a_cut,
+    [CTRL('C')] = a_copy,
+    [CTRL('V')] = a_paste,
+
+    [CTRL('F')] = a_find,
+    [CTRL('G')] = a_find_next,
+    [CTRL('H')] = a_find_prev,
+    [CTRL('R')] = a_replace,
+
+    [CTRL('Z')] = a_undo,
+    [CTRL('Y')] = a_redo,
+
+
+    // -- Alt Actions -- //
+
     ['i'] = a_up,
     ['j'] = a_left,
     ['k'] = a_down,
@@ -46,15 +75,14 @@ action_fn actions[MAX_ACTIONS] = {
     ['<'] = a_select_paragraph_up,
     ['>'] = a_select_paragraph_down,
 
-    // ['\'] = a_to_matching,
-    // ['['] = a_to_opening,
-    // [']'] = a_to_closing,
-    //
-    // ['|'] = a_select_to_matching,
-    // ['{'] = a_select_to_opening,
-    // ['}'] = a_select_to_closing,
+    ['\\'] = a_to_matching,
+    ['['] = a_to_opening,
+    [']'] = a_to_closing,
 
-    [CTRL('A')] = a_select_all,
+    ['|'] = a_select_to_matching,
+    ['{'] = a_select_to_opening,
+    ['}'] = a_select_to_closing,
+
     ['s'] = a_select_word,
     ['d'] = a_select_line,
 
@@ -65,19 +93,13 @@ action_fn actions[MAX_ACTIONS] = {
     ['W'] = a_delete_trailing_whitespace,
 
     [' '] = a_space,
-    [CTRL('M')] = a_newline,
-
-    [CTRL('I')] = a_tab,
     ['y'] = a_indent,
     ['Y'] = a_unindent,
 
     ['m'] = a_move_line_down,
     ['M'] = a_move_line_up,
 
-    ['e'] = a_edit,
-    [CTRL('E')] = a_escape,
 
-    [CTRL('T')] = a_new_tab,
     ['t'] = a_next_tab,
     ['T'] = a_prev_tab,
 
@@ -85,24 +107,16 @@ action_fn actions[MAX_ACTIONS] = {
     ['c'] = a_copy,
     ['v'] = a_paste,
 
-    [CTRL('X')] = a_cut,
-    [CTRL('C')] = a_copy,
-    [CTRL('V')] = a_paste,
-
-    [CTRL('Z')] = a_undo,
-    [CTRL('Y')] = a_redo,
-};
-
-// Alt Actions.
-action_fn alt_actions[MAX_ALT_ACTIONS] = {
-
 };
 
 // Fixed Function Actions.
 action_fn fixed_actions[MAX_FIXED_ACTIONS] = {
     [INPUT_TAB] = a_tab,
+    [INPUT_SHIFT_TAB] = a_unindent,
+
     [INPUT_ENTER] = a_newline,
     [INPUT_BACKSPACE] = a_backspace,
+    [INPUT_DELETE] = a_delete,
 
     [INPUT_UP] = a_up,
     [INPUT_DOWN] = a_down,
@@ -136,8 +150,6 @@ action_fn fixed_actions[MAX_FIXED_ACTIONS] = {
 
     [INPUT_HOME] = a_buffer_begin,
     [INPUT_END] = a_select_buffer_end,
-
-    [INPUT_DELETE] = a_delete,
 };
 
 
@@ -186,11 +198,11 @@ void a_paragraph_down (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_cursor_paragraph(buffer, count, false);
 }
 
-void a_to_matching (Editor* editor, Buffer* buffer, int32_t count);
-void a_to_opening (Editor* editor, Buffer* buffer, int32_t count);
-void a_to_closing (Editor* editor, Buffer* buffer, int32_t count);
+void a_to_matching (Editor* editor, Buffer* buffer, int32_t count) {}
+void a_to_opening (Editor* editor, Buffer* buffer, int32_t count) {}
+void a_to_closing (Editor* editor, Buffer* buffer, int32_t count) {}
 
-void a_goto (Editor* editor, Buffer* buffer, int32_t count);
+void a_goto (Editor* editor, Buffer* buffer, int32_t count) {}
 
 // - Selection Actions - //
 
@@ -246,9 +258,9 @@ void a_select_paragraph_down (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_cursor_paragraph(buffer, count, true);
 }
 
-void a_select_to_matching (Editor* editor, Buffer* buffer, int32_t count);
-void a_select_to_opening (Editor* editor, Buffer* buffer, int32_t count);
-void a_select_to_closing (Editor* editor, Buffer* buffer, int32_t count);
+void a_select_to_matching (Editor* editor, Buffer* buffer, int32_t count) {}
+void a_select_to_opening (Editor* editor, Buffer* buffer, int32_t count) {}
+void a_select_to_closing (Editor* editor, Buffer* buffer, int32_t count) {}
 
 void a_select_swap (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_selection_swap(buffer);
@@ -270,7 +282,6 @@ void a_space (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_edit_char(buffer, ' ', count);
 }
 void a_newline (Editor* editor, Buffer* buffer, int32_t count) {
-    if (editor_confirm(editor)) return;
     buffer_edit_line(buffer, count);
 }
 
@@ -295,28 +306,31 @@ void a_move_line_down (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_edit_move_line(buffer, count);
 }
 
-// - Edit Mode - //
-
-void a_edit (Editor* editor, Buffer* buffer, int32_t count) {
-    editor_edit_mode(editor);
-}
-void a_escape (Editor* editor, Buffer* buffer, int32_t count) {
-    editor_escape(editor);
-}
-
 // - Buffer Actions - //
 
-void a_quit (Editor* editor, Buffer* buffer, int32_t count);
-void a_close (Editor* editor, Buffer* buffer, int32_t count);
+void a_quit (Editor* editor, Buffer* buffer, int32_t count) {
+    editor_quit(editor);
+}
+void a_close (Editor* editor, Buffer* buffer, int32_t count) {
+    editor_close(editor);
+}
 
-void a_open (Editor* editor, Buffer* buffer, int32_t count);
-void a_save (Editor* editor, Buffer* buffer, int32_t count);
-void a_save_all (Editor* editor, Buffer* buffer, int32_t count);
-void a_save_duplicate (Editor* editor, Buffer* buffer, int32_t count);
-
-void a_new_tab (Editor* editor, Buffer* buffer, int32_t count) {
+void a_new (Editor* editor, Buffer* buffer, int32_t count) {
     editor_new(editor);
 }
+void a_open (Editor* editor, Buffer* buffer, int32_t count) {
+    editor_open(editor);
+}
+void a_save (Editor* editor, Buffer* buffer, int32_t count) {
+    editor_save(editor);
+}
+void a_save_all (Editor* editor, Buffer* buffer, int32_t count) {
+    editor_save_all(editor);
+}
+void a_save_as (Editor* editor, Buffer* buffer, int32_t count) {
+    editor_save_as(editor);
+}
+
 void a_next_tab (Editor* editor, Buffer* buffer, int32_t count) {
     editor_buffer_next(editor);
 }
@@ -354,10 +368,8 @@ void a_redo (Editor* editor, Buffer* buffer, int32_t count) {
 
 // - Find and Replace - //
 
-void a_next (Editor* editor, Buffer* buffer, int32_t count);
-void a_prev (Editor* editor, Buffer* buffer, int32_t count);
 
-void a_find (Editor* editor, Buffer* buffer, int32_t count);
-void a_replace (Editor* editor, Buffer* buffer, int32_t count);
-
-void a_pattern_replace (Editor* editor, Buffer* buffer, int32_t count);
+void a_find (Editor* editor, Buffer* buffer, int32_t count) {}
+void a_find_next (Editor* editor, Buffer* buffer, int32_t count) {}
+void a_find_prev (Editor* editor, Buffer* buffer, int32_t count) {}
+void a_replace (Editor* editor, Buffer* buffer, int32_t count) {}

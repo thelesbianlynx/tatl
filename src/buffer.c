@@ -142,31 +142,30 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
 
     // Title.
     output_cup(window.y, window.x);
-    output_setfg(0);
-    output_setbg(7);
+    output_normal();
+    output_underline();
     char title_buf[window.width + 1];
     snprintf(title_buf, window.width + 1, "%*c%-*s", ln_width - 2, ' ', window.width - ln_width + 2, buffer->title);
     output_str(title_buf);
+    output_no_underline();
 
     // Buffer.
     for (int i = 0; i < window.height - 1; i++) {
         output_cup(window.y + i + 1, window.x);
-        output_setfg(7);
-        output_setbg(8);
+        //output_setfg(2);
+        output_bold();
 
         int lineno = i + buffer->scroll_line;
-        //bool draw_cursor = false;
 
         //End of File.
         if (lineno >= buffer->lines->size) {
-            for (int j = 0; j < ln_width; j++) {
-                output_char(' ');
-            }
-            output_setfg(0);
-            output_setbg(15);
-            for (int j = ln_width; j < window.width; j++) {
-                output_char(' ');
-            }
+            // for (int j = 0; j < ln_width; j++) {
+            //     output_char(' ');
+            // }
+            // output_normal();
+            // for (int j = ln_width; j < window.width; j++) {
+            //     output_char(' ');
+            // }
             continue;
         }
 
@@ -178,8 +177,8 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
         output_str(ln_buf);
 
         // Line Text.
-        output_setfg(0);
-        output_setbg(in_selection ? 14 : 15);
+        output_normal();
+        if (in_selection) output_reverse();
         output_char(' ');
 
         int col = 0;
@@ -192,20 +191,17 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
 
             if (buffer->cursor.line == lineno && buffer->cursor.col == j) {
                 in_selection = !in_selection;
-                output_setbg(in_selection ? 14 : 15);
+                output_normal();
+                if (in_selection) output_reverse();
                 cx = col + ln_width + 1;
                 cy = i + 1;
-                //draw_cursor = true;
             }
 
             if (buffer->selection.line == lineno && buffer->selection.col == j) {
                 in_selection = !in_selection;
-                output_setbg(in_selection ? 14 : 15);
+                output_normal();
+                if (in_selection) output_reverse();
             }
-
-            // if (draw_cursor) {
-            //     output_underline();
-            // }
 
             if (j < line->size) {
                 if (line->buffer[j] > 32) {
@@ -223,17 +219,14 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
                 }
             }
 
-            // if (draw_cursor) {
-            //     output_no_underline();
-            //     draw_cursor = false;
-            // }
         }
 
         // Rest Of Line.
-        if (in_selection) output_setbg(15);
-        for (int j = col + ln_width + 1; j < window.width; j++) {
-            output_char(' ');
-        }
+        // if (in_selection) output_setbg(15);
+        // for (int j = col + ln_width + 1; j < window.width; j++) {
+        //     output_char(' ');
+        // }
+        output_normal();
     }
 
     // Set Final Cursor Position.
@@ -241,7 +234,7 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
         output_cup(window.y + cy, window.x + cx);
         output_cvvis();
     } else {
-         output_civis();
+        output_civis();
     }
 }
 
@@ -645,7 +638,7 @@ void buffer_cursor_word (Buffer* buffer, int32_t lead, int32_t i, bool sel) {
 
 void buffer_cursor_paragraph (Buffer* buffer, int32_t i, bool sel) {
     if (buffer->alt_mode) return;
-    
+
 }
 
 void buffer_cursor_home (Buffer* buffer, bool sel) {

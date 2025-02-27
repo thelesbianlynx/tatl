@@ -62,7 +62,7 @@ bool mod_ctrl (uint32_t mods) {
     return mods >= 5;
 }
 
-InputStatus nextkey (int32_t timeout, InputState* r_inputstate, int32_t* debug) {
+bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
     struct pollfd pollfd = { .fd = 0, .events = POLLIN };
     int status = poll(&pollfd, 1, 1000);
     if (status > 0) {
@@ -72,35 +72,48 @@ InputStatus nextkey (int32_t timeout, InputState* r_inputstate, int32_t* debug) 
 
         if (n == 1) {
             char c = buffer[0];
-            if (c == 9)  return INPUT_TAB;
-            if (c == 13)  return INPUT_ENTER;
-            if (c == 27)  return INPUT_ESC;
-            if (c == 127) return INPUT_BACKSPACE;
-            r_inputstate->charcode = c;
-            return INPUT_CHAR;
+            if (c == 9) {
+                event->type = INPUT_TAB;
+            } else if (c == 13) {
+                event->type = INPUT_ENTER;
+            } else if (c == 27) {
+                event->type = INPUT_ESC;
+            } else if (c == 127) {
+                event->type = INPUT_BACKSPACE;
+            } else {
+                event->type = INPUT_CHAR;
+                event->charcode = c;
+            }
+            return true;
         }
 
         if (n == 2 && buffer[0] == '\e') {
             char c = buffer[1];
-            if (c == 13) return INPUT_ALT_ENTER;
-            if (c == 127) return INPUT_ALT_BACKSPACE;
-            if (c >= 32) {
-                r_inputstate->charcode = c;
-                return INPUT_ALT_CHAR;
+            if (c == 13) {
+                event->type = INPUT_ALT_ENTER;
+            } else if (c == 127) {
+                event->type = INPUT_ALT_BACKSPACE;
+            } else if (c >= 32) {
+                event->type = INPUT_ALT_CHAR;
+                event->charcode = c;
+            } else {
+                return false;
             }
+            return true;
         }
 
         if (n >= 3 && buffer[0] == '\e' && buffer[1] == '[') {
-            if (buffer[2] == 'M') {
-                r_inputstate->charcode = buffer[3] - 32;
-                r_inputstate->x = (uint8_t) buffer[4] - 32;
-                r_inputstate->y = (uint8_t) buffer[5] - 32;
-                return INPUT_MOUSE_MOTION;
+            if (buffer[2] == 'M' && n >= 6) {
+                event->type = INPUT_MOUSE;
+                event->charcode = buffer[3] - 32;
+                event->x = (uint8_t) buffer[4] - 32;
+                event->y = (uint8_t) buffer[5] - 32;
+                return true;
             }
 
-            for (int i = 0; i < n && i < 30; ++i) {
-                debug[i+1] = buffer[i];
-            }
+            // for (int i = 0; i < n && i < 30; ++i) {
+            //     debug[i+1] = buffer[i];
+            // }
 
             char c;
             uint32_t key, mods;
@@ -110,60 +123,108 @@ InputStatus nextkey (int32_t timeout, InputState* r_inputstate, int32_t* debug) 
                 // Complicated.
                 // ...
 
-                return INPUT_NONE;
+                return false;
             }
 
             if (c == 'u') {
                 // Kitty input event.
                 // ...
 
-                return INPUT_NONE;
+                return false;
             }
 
             if (mod_alt(mods)) {
                 if (mod_shift(mods)) {
-                    if (c == 'A') return INPUT_SHIFT_ALT_UP;
-                    if (c == 'B') return INPUT_SHIFT_ALT_DOWN;
-                    if (c == 'D') return INPUT_SHIFT_ALT_LEFT;
-                    if (c == 'C') return INPUT_SHIFT_ALT_RIGHT;
+                    if (c == 'A') {
+                        event->type = INPUT_SHIFT_ALT_UP;
+                    } else if (c == 'B') {
+                        event->type = INPUT_SHIFT_ALT_DOWN;
+                    } else if (c == 'D') {
+                        event->type = INPUT_SHIFT_ALT_LEFT;
+                    } else if (c == 'C') {
+                        event->type = INPUT_SHIFT_ALT_RIGHT;
+                    } else {
+                        return false;
+                    }
+                    return true;
                 }
 
-                if (c == 'A') return INPUT_ALT_UP;
-                if (c == 'B') return INPUT_ALT_DOWN;
-                if (c == 'D') return INPUT_ALT_LEFT;
-                if (c == 'C') return INPUT_ALT_RIGHT;
+                if (c == 'A') {
+                    event->type = INPUT_ALT_UP;
+                } else if (c == 'B') {
+                    event->type = INPUT_ALT_DOWN;
+                } else if (c == 'D') {
+                    event->type = INPUT_ALT_LEFT;
+                } else if (c == 'C') {
+                    event->type = INPUT_ALT_RIGHT;
+                } else {
+                    return false;
+                }
+                return true;
             }
 
             if (mod_ctrl(mods)) {
                 if (mod_shift(mods)) {
-                    if (c == 'A') return INPUT_SHIFT_CTRL_UP;
-                    if (c == 'B') return INPUT_SHIFT_CTRL_DOWN;
-                    if (c == 'D') return INPUT_SHIFT_CTRL_LEFT;
-                    if (c == 'C') return INPUT_SHIFT_CTRL_RIGHT;
+                    if (c == 'A') {
+                        event->type = INPUT_SHIFT_CTRL_UP;
+                    } else if (c == 'B') {
+                        event->type = INPUT_SHIFT_CTRL_DOWN;
+                    } else if (c == 'D') {
+                        event->type = INPUT_SHIFT_CTRL_LEFT;
+                    } else if (c == 'C') {
+                        event->type = INPUT_SHIFT_CTRL_RIGHT;
+                    } else {
+                        return false;
+                    }
+                    return true;
                 }
 
-                if (c == 'A') return INPUT_CTRL_UP;
-                if (c == 'B') return INPUT_CTRL_DOWN;
-                if (c == 'D') return INPUT_CTRL_LEFT;
-                if (c == 'C') return INPUT_CTRL_RIGHT;
+                if (c == 'A') {
+                    event->type = INPUT_CTRL_UP;
+                } else if (c == 'B') {
+                    event->type = INPUT_CTRL_DOWN;
+                } else if (c == 'D') {
+                    event->type = INPUT_CTRL_LEFT;
+                } else if (c == 'C') {
+                    event->type = INPUT_CTRL_RIGHT;
+                } else {
+                    return false;
+                }
+                return true;
             }
 
             if (mod_shift(mods)) {
-                if (c == 'A') return INPUT_SHIFT_UP;
-                if (c == 'B') return INPUT_SHIFT_DOWN;
-                if (c == 'D') return INPUT_SHIFT_LEFT;
-                if (c == 'C') return INPUT_SHIFT_RIGHT;
+                if (c == 'A') {
+                    event->type = INPUT_SHIFT_UP;
+                } else if (c == 'B') {
+                    event->type = INPUT_SHIFT_DOWN;
+                } else if (c == 'D') {
+                    event->type = INPUT_SHIFT_LEFT;
+                } else if (c == 'C') {
+                    event->type = INPUT_SHIFT_RIGHT;
+                } else {
+                    return false;
+                }
+                return true;
             }
 
-            if (c == 'A') return INPUT_UP;
-            if (c == 'B') return INPUT_DOWN;
-            if (c == 'D') return INPUT_LEFT;
-            if (c == 'C') return INPUT_RIGHT;
+            if (c == 'A') {
+                event->type = INPUT_SHIFT_UP;
+            } else if (c == 'B') {
+                event->type = INPUT_SHIFT_DOWN;
+            } else if (c == 'D') {
+                event->type = INPUT_SHIFT_LEFT;
+            } else if (c == 'C') {
+                event->type = INPUT_SHIFT_RIGHT;
+            } else if (c == 'Z') {
+                event->type = INPUT_SHIFT_TAB;
+            } else {
+                return false;
+            }
 
-            if (c == 'Z') return INPUT_SHIFT_TAB;
-
+            return true;
         }
     }
 
-    return INPUT_NONE;
+    return false;
 }

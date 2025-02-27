@@ -13,20 +13,18 @@ int main () {
     struct editor editor;
     editor_init(&editor);
 
-    bool running;
-
-    InputStatus status;
-    InputState state;
+    InputEvent event;
 
     struct winsize size;
     int width = 0, height = 0;
 
     for (;;) {
         int32_t debug[32] = {0};
-        status = nextkey(10, &state, debug);
-        running = editor_update(&editor, status, &state);
-
-        if (!running) break;
+        bool has_event = nextkey(10, &event, debug);
+        if (has_event) {
+            bool running = editor_update(&editor, &event);
+            if (!running) break;
+        }
 
         if (ioctl(0, TIOCGWINSZ, &size) == 0) {
             width = size.ws_col;
@@ -39,6 +37,5 @@ int main () {
     editor_fini(&editor);
 
     output_cnorm();
-
     output_fini();
 }

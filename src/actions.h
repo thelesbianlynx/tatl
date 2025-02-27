@@ -8,18 +8,16 @@ typedef void (*action_fn) (Editor* editor, Buffer* buffer, int32_t count);
 
 // Action Function Arrays.
 //  - Regular Actions.
+//  - Map to Alt/Ctrl + Character.
 extern action_fn actions[];
-
-//  - Alt Actions.
-extern action_fn alt_actions[];
-
-//  - Ctrl Actions.
+//
+//  - Fixed-Function Actions.
+//  - Map to Non-Character keys (like arrow keys).
 extern action_fn fixed_actions[];
 
 // Maximum Number of actions per action array.
 enum {
     MAX_ACTIONS = 256,
-    MAX_ALT_ACTIONS = 256,
     MAX_FIXED_ACTIONS = 128,
 };
 
@@ -98,22 +96,20 @@ void a_duplicate (Editor* editor, Buffer* buffer, int32_t count);
 void a_move_line_up (Editor* editor, Buffer* buffer, int32_t count);
 void a_move_line_down (Editor* editor, Buffer* buffer, int32_t count);
 
-// - Edit Mode - //
-
-void a_edit (Editor* editor, Buffer* buffer, int32_t count);
-void a_escape (Editor* editor, Buffer* buffer, int32_t count);
+void a_move_selection_forward (Editor* editor, Buffer* buffer, int32_t count);
+void a_move_selection_backward (Editor* editor, Buffer* buffer, int32_t count);
 
 // - Buffer Actions - //
 
 void a_quit (Editor* editor, Buffer* buffer, int32_t count);
 void a_close (Editor* editor, Buffer* buffer, int32_t count);
 
+void a_new (Editor* editor, Buffer* buffer, int32_t count);
 void a_open (Editor* editor, Buffer* buffer, int32_t count);
 void a_save (Editor* editor, Buffer* buffer, int32_t count);
 void a_save_all (Editor* editor, Buffer* buffer, int32_t count);
-void a_save_duplicate (Editor* editor, Buffer* buffer, int32_t count);
+void a_save_as (Editor* editor, Buffer* buffer, int32_t count);
 
-void a_new_tab (Editor* editor, Buffer* buffer, int32_t count);
 void a_next_tab (Editor* editor, Buffer* buffer, int32_t count);
 void a_prev_tab (Editor* editor, Buffer* buffer, int32_t count);
 
@@ -130,10 +126,7 @@ void a_redo (Editor* editor, Buffer* buffer, int32_t count);
 
 // - Find and Replace - //
 
-void a_next (Editor* editor, Buffer* buffer, int32_t count);
-void a_prev (Editor* editor, Buffer* buffer, int32_t count);
-
 void a_find (Editor* editor, Buffer* buffer, int32_t count);
+void a_find_next (Editor* editor, Buffer* buffer, int32_t count);
+void a_find_prev (Editor* editor, Buffer* buffer, int32_t count);
 void a_replace (Editor* editor, Buffer* buffer, int32_t count);
-
-void a_pattern_replace (Editor* editor, Buffer* buffer, int32_t count);

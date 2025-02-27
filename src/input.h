@@ -2,12 +2,11 @@
 
 #include "main.h"
 
-enum input_status {
+enum input_event_type {
     INPUT_NONE,
 
     INPUT_CHAR,
     INPUT_ALT_CHAR,
-    INPUT_CTRL_CHAR,
 
     INPUT_ESC,
     INPUT_TAB,
@@ -70,14 +69,13 @@ enum input_status {
     INPUT_F11,
     INPUT_F12,
 
-    INPUT_MOUSE_PRESS,
-    INPUT_MOUSE_RELEASE,
-    INPUT_MOUSE_MOTION,
+    INPUT_MOUSE,
 };
 
-struct input_state {
+struct input_event {
+    uint32_t type;
     uint32_t charcode;
     uint32_t x, y;
 };
 
-InputStatus nextkey (int32_t timeout, InputState* r_inputstate, int32_t* debug);
+bool nextkey (int32_t timeout, InputEvent* r_inputstate, int32_t* debug);

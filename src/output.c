@@ -85,8 +85,16 @@ void output_reset () {
 }
 
 
+void output_clear () {
+    tputs(tparm(tigetstr("clear")), 1, output_char);
+}
+
 void output_cup (int32_t row, int32_t col) {
     tputs(tparm(tigetstr("cup"), row, col), 1, output_char);
+}
+
+void output_normal () {
+    tputs(tparm(tigetstr("sgr0")), 1, output_char);
 }
 
 void output_setfg (int32_t fg) {
@@ -97,8 +105,20 @@ void output_setbg (int32_t bg) {
     tputs(tparm(tigetstr("setab"), bg), 1, output_char);
 }
 
-void output_clear () {
-    tputs(tparm(tigetstr("clear")), 1, output_char);
+void output_bold () {
+    tputs(tparm(tigetstr("bold")), 1, output_char);
+}
+
+void output_reverse () {
+    tputs(tparm(tigetstr("rev")), 1, output_char);
+}
+
+void output_underline () {
+    tputs(tparm(tigetstr("smul")), 1, output_char);
+}
+
+void output_no_underline () {
+    tputs(tparm(tigetstr("rmul")), 1, output_char);
 }
 
 void output_cnorm () {
@@ -111,12 +131,4 @@ void output_civis () {
 
 void output_cvvis () {
     tputs(tparm(tigetstr("cvvis")), 1, output_char);
-}
-
-void output_underline () {
-    tputs(tparm(tigetstr("smul")), 1, output_char);
-}
-
-void output_no_underline () {
-    tputs(tparm(tigetstr("rmul")), 1, output_char);
 }

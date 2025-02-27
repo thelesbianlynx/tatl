@@ -16,8 +16,7 @@
 //
 typedef struct editor Editor;
 
-typedef enum input_status InputStatus;
-typedef struct input_state InputState;
+typedef struct input_event InputEvent;
 
 typedef struct box Box;
 
