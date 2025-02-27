@@ -4,13 +4,15 @@
 #include <unistd.h>
 
 static
-void parseCSI (const char* buffer, int n, char* ch, uint32_t* keycode, uint32_t* mods) {
-    char b1[n]; // = {};
-    char b2[n]; // = {};
+void parseCSI (const char* buffer, int n, char* ch, uint32_t* keycode, uint32_t* mods, uint32_t* button) {
+    char b1[n];
+    char b2[n];
+    char b3[n];
     memset(b1, 0, n);
-    memset(b2, 0, n); // Clang Compatibility.
+    memset(b2, 0, n);
+    memset(b3, 0, n);
 
-    int i = 2;
+    int i = 0;
     int j = 0;
 
     // First argument.
@@ -28,12 +30,41 @@ void parseCSI (const char* buffer, int n, char* ch, uint32_t* keycode, uint32_t*
             j = 0;
             i = i + 1;
             for (;;) {
-                if (i >= n - 1 || buffer[i] == ';') {
+                // Only two arguments, early return.
+                if (i >= n - 1) {
                     *ch = buffer[n-1];
                     *keycode = atoi(b1);
                     *mods = atoi(b2);
                     return;
                 }
+
+                // Third argument.
+                if (buffer[i] == ';') {
+                    if (button == NULL) {
+                        *ch = buffer[n-1];
+                        *keycode = atoi(b1);
+                        *mods = atoi(b2);
+                        return;
+                    }
+
+                    j = 0;
+                    i = i + 1;
+
+                    for (;;) {
+                        if (i >= n - 1 || buffer[i] == ';') {
+                            *ch = buffer[n-1];
+                            *button = atoi(b1);
+                            *keycode = atoi(b2);
+                            *mods = atoi(b3);
+                            return;
+                        }
+
+                        b3[j] = buffer[i];
+                        ++i;
+                        ++j;
+                    }
+                }
+
 
                 b2[j] = buffer[i];
                 ++i;
@@ -104,11 +135,27 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
 
         if (n >= 3 && buffer[0] == '\e' && buffer[1] == '[') {
             if (buffer[2] == 'M' && n >= 6) {
+                // Mouse Event.
                 event->type = INPUT_MOUSE;
                 event->charcode = buffer[3] - 32;
                 event->x = (uint8_t) buffer[4] - 32;
                 event->y = (uint8_t) buffer[5] - 32;
                 return true;
+            }
+
+            if (buffer[2] == '<') {
+                // SGR-Mouse Event.
+                char c;
+                uint32_t x, y, button;
+                parseCSI(buffer + 3, n - 3, &c, &x, &y, &button);
+                if (c != 'm') {
+                    event->type = INPUT_MOUSE;
+                    event->charcode = button;
+                    event->x = x;
+                    event->y = y;
+                    return true;
+                }
+                return false;
             }
 
             // for (int i = 0; i < n && i < 30; ++i) {
@@ -117,7 +164,7 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
 
             char c;
             uint32_t key, mods;
-            parseCSI(buffer, n, &c, &key, &mods);
+            parseCSI(buffer + 2, n - 2, &c, &key, &mods, NULL);
 
             if (c == '~') {
                 // Complicated.
@@ -209,13 +256,13 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
             }
 
             if (c == 'A') {
-                event->type = INPUT_SHIFT_UP;
+                event->type = INPUT_UP;
             } else if (c == 'B') {
-                event->type = INPUT_SHIFT_DOWN;
+                event->type = INPUT_DOWN;
             } else if (c == 'D') {
-                event->type = INPUT_SHIFT_LEFT;
+                event->type = INPUT_LEFT;
             } else if (c == 'C') {
-                event->type = INPUT_SHIFT_RIGHT;
+                event->type = INPUT_RIGHT;
             } else if (c == 'Z') {
                 event->type = INPUT_SHIFT_TAB;
             } else {
