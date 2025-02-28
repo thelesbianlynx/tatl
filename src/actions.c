@@ -51,23 +51,17 @@ action_fn actions[MAX_ACTIONS] = {
     ['K'] = a_select_down,
     ['L'] = a_select_right,
 
-    ['u'] = a_word_left,
-    ['o'] = a_word_right,
+    ['o'] = a_word_left,
+    ['p'] = a_word_right,
 
-    ['U'] = a_select_word_left,
-    ['O'] = a_select_word_right,
+    ['O'] = a_select_word_left,
+    ['P'] = a_select_word_right,
 
-    ['b'] = a_line_begin,
-    ['n'] = a_line_end,
+    ['a'] = a_line_begin,
+    ['z'] = a_line_end,
 
-    ['B'] = a_select_line_begin,
-    ['N'] = a_select_line_end,
-
-    ['a'] = a_buffer_begin,
-    ['z'] = a_buffer_end,
-
-    ['A'] = a_select_buffer_begin,
-    ['Z'] = a_select_buffer_end,
+    ['A'] = a_select_line_begin,
+    ['Z'] = a_select_line_end,
 
     [','] = a_paragraph_up,
     ['.'] = a_paragraph_down,
@@ -83,14 +77,17 @@ action_fn actions[MAX_ACTIONS] = {
     ['{'] = a_select_to_opening,
     ['}'] = a_select_to_closing,
 
-    ['s'] = a_select_word,
-    ['d'] = a_select_line,
+    ['w'] = a_select_word,
+    ['e'] = a_select_line,
 
-    ['S'] = a_select_swap,
-    ['D'] = a_duplicate,
+    ['s'] = a_select_swap,
+    ['S'] = a_duplicate,
 
-    ['X'] = a_delete,
-    ['W'] = a_delete_trailing_whitespace,
+    ['d'] = a_delete,
+    ['D'] = a_delete_lines,
+
+    ['b'] = a_backspace,
+    ['B'] = a_backspace_lines,
 
     [' '] = a_space,
     ['y'] = a_indent,
@@ -103,9 +100,6 @@ action_fn actions[MAX_ACTIONS] = {
     ['t'] = a_next_tab,
     ['T'] = a_prev_tab,
 
-    ['x'] = a_cut,
-    ['c'] = a_copy,
-    ['v'] = a_paste,
 
 };
 
@@ -291,6 +285,13 @@ void a_delete (Editor* editor, Buffer* buffer, int32_t count) {
 void a_backspace (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_edit_backspace(buffer, count);
 }
+void a_delete_lines (Editor* editor, Buffer* buffer, int32_t count) {
+
+}
+void a_backspace_lines (Editor* editor, Buffer* buffer, int32_t count) {
+
+}
+
 void a_delete_trailing_whitespace (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_selection_delete_whitespace(buffer);
 }
@@ -304,6 +305,13 @@ void a_move_line_up (Editor* editor, Buffer* buffer, int32_t count) {
 }
 void a_move_line_down (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_edit_move_line(buffer, count);
+}
+
+void a_move_selection_forward (Editor* editor, Buffer* buffer, int32_t count) {
+
+}
+void a_move_selection_backward (Editor* editor, Buffer* buffer, int32_t count) {
+
 }
 
 // - Buffer Actions - //

@@ -10,7 +10,6 @@ typedef void (*action_fn) (Editor* editor, Buffer* buffer, int32_t count);
 //  - Regular Actions.
 //  - Map to Alt/Ctrl + Character.
 extern action_fn actions[];
-//
 //  - Fixed-Function Actions.
 //  - Map to Non-Character keys (like arrow keys).
 extern action_fn fixed_actions[];
@@ -89,6 +88,10 @@ void a_newline (Editor* editor, Buffer* buffer, int32_t count);
 
 void a_delete (Editor* editor, Buffer* buffer, int32_t count);
 void a_backspace (Editor* editor, Buffer* buffer, int32_t count);
+void a_delete_lines (Editor* editor, Buffer* buffer, int32_t count);
+void a_backspace_lines (Editor* editor, Buffer* buffer, int32_t count);
+
+
 void a_delete_trailing_whitespace (Editor* editor, Buffer* buffer, int32_t count);
 
 void a_duplicate (Editor* editor, Buffer* buffer, int32_t count);

@@ -140,32 +140,49 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
     if (buffer->cursor.line < buffer->scroll_line) in_selection = !in_selection;
     if (buffer->selection.line < buffer->scroll_line) in_selection = !in_selection;
 
+    // Scroll percent.
+    char sp[5];
+    if (buffer->lines->size == 1) {
+        snprintf(sp, 5, "     ");
+    } else {
+        snprintf(sp, 5, "%3d%% ", (int) (100 * ((float) buffer->scroll_line / (float) (buffer->lines->size - 1))));
+    }
+
     // Title.
     output_cup(window.y, window.x);
     output_normal();
     output_underline();
-    char title_buf[window.width + 1];
-    snprintf(title_buf, window.width + 1, "%*c%-*s", ln_width - 2, ' ', window.width - ln_width + 2, buffer->title);
+    int len = window.width + 1;
+    char title_buf[len];
+    snprintf(title_buf, len, "%*c%-*s%s", ln_width - 2, ' ', window.width - ln_width - 3, buffer->title, sp);
     output_str(title_buf);
     output_no_underline();
 
     // Buffer.
-    for (int i = 0; i < window.height - 1; i++) {
+    for (int i = 0; i < window.height - 2; i++) {
         output_cup(window.y + i + 1, window.x);
         //output_setfg(2);
         output_bold();
+
+        // Last Line.
+        bool last = false;
+        if (i == window.height - 3) {
+            last = true;
+            output_underline();
+        }
 
         int lineno = i + buffer->scroll_line;
 
         //End of File.
         if (lineno >= buffer->lines->size) {
-            // for (int j = 0; j < ln_width; j++) {
-            //     output_char(' ');
-            // }
-            // output_normal();
-            // for (int j = ln_width; j < window.width; j++) {
-            //     output_char(' ');
-            // }
+            if (last) {
+                for (int j = 0; j < ln_width; j++) {
+                    output_char(' ');
+                }
+                for (int j = ln_width; j < window.width; j++) {
+                    output_char(' ');
+                }
+            }
             continue;
         }
 
@@ -178,6 +195,7 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
 
         // Line Text.
         output_normal();
+        if (last) output_underline();
         if (in_selection) output_reverse();
         output_char(' ');
 
@@ -192,6 +210,7 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
             if (buffer->cursor.line == lineno && buffer->cursor.col == j) {
                 in_selection = !in_selection;
                 output_normal();
+                if (last) output_underline();
                 if (in_selection) output_reverse();
                 cx = col + ln_width + 1;
                 cy = i + 1;
@@ -200,6 +219,7 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
             if (buffer->selection.line == lineno && buffer->selection.col == j) {
                 in_selection = !in_selection;
                 output_normal();
+                if (last) output_underline();
                 if (in_selection) output_reverse();
             }
 
@@ -222,12 +242,33 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
         }
 
         // Rest Of Line.
-        // if (in_selection) output_setbg(15);
-        // for (int j = col + ln_width + 1; j < window.width; j++) {
-        //     output_char(' ');
-        // }
+        if (last) {
+            if (in_selection) {
+                output_normal();
+                output_underline();
+            }
+            for (int j = col + ln_width + 1; j < window.width; j++) {
+                output_char(' ');
+            }
+        }
         output_normal();
     }
+
+    // Status Line.
+
+    char status_buf[len];
+    char left_buf[len];
+    char right_buf[len];
+    snprintf(left_buf, len, " %d:%d", buffer->cursor.line, buffer->cursor.col);
+    snprintf(right_buf, len, "%s  %s  %s ", "LN", "Utf-8", "Plain Text");
+    snprintf(status_buf, len, "%s%*s", left_buf, window.width - (int) strlen(left_buf), right_buf);
+
+    output_cup(window.y + window.height - 1, window.x);
+    output_normal();
+    output_underline();
+    output_str(status_buf);
+    output_normal();
+
 
     // Set Final Cursor Position.
     if (cx >= 0 && cy >= 0) {

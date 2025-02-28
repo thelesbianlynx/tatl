@@ -67,36 +67,6 @@ bool editor_update (Editor* editor, InputEvent* event) {
         if (a) a(editor, buffer, 1);
     }
 
-
-
-
-    // if (status == INPUT_ESC) {
-    //     if (editor->edit_mode) {
-    //         editor_escape(editor);
-    //     } else {
-    //         return false;
-    //     }
-    // } else if (status == INPUT_CHAR) {
-    //     if (editor->edit_mode && state->charcode > 32) {
-    //         buffer_edit_char(buffer, state->charcode, 1);
-    //     } else if (state->charcode < MAX_ACTIONS) {
-    //         action_fn a = actions[state->charcode];
-    //         if (a) a(editor, buffer, 1);
-    //     }
-    // } else if (status == INPUT_ALT_CHAR) {
-    //     if (state->charcode < MAX_ALT_ACTIONS) {
-    //         action_fn alt_a = alt_actions[state->charcode];
-    //         if (alt_a) alt_a(editor, buffer, 1);
-    //         else if (state->charcode < MAX_ACTIONS) {
-    //             action_fn a = actions[state->charcode];
-    //             if (a) a(editor, buffer, 1);
-    //         }
-    //     }
-    // }  else {
-    //     action_fn a = fixed_actions[status];
-    //     if (a) a(editor, buffer, 1);
-    // }
-
     return true;
 }
 
@@ -109,12 +79,6 @@ void editor_draw (Editor* editor, int32_t width, int32_t height, int32_t* debug)
 
     output_normal();
     output_clear();
-
-    // Status Line.
-    // {
-    //     Box box = {0, height - 2, width, 2};
-    //     draw_modeline(editor, box);
-    // }
 
     // Buffer.
     {
@@ -178,47 +142,4 @@ void editor_buffer_next (Editor* editor) {
 
 void editor_buffer_prev (Editor* editor) {
     editor->buffer_id = MOD(editor->buffer_id - 1, editor->buffers->size);
-}
-
-
-static
-void draw_modeline (Editor* editor, Box window) {
-    int len = window.width + 1;
-    char buf[len];
-
-    editor->buffer_id = MOD(editor->buffer_id, editor->buffers->size);
-    Buffer* buffer = editor->buffers->data[editor->buffer_id];
-
-    output_cup(window.y, window.x);
-    //output_setfg(15);
-    //if (!editor->edit_mode) {
-        //output_setbg(1);
-        snprintf(buf, len, " %-*s", 7, "Normal");
-        output_str(buf);
-    // } else {
-    //     //output_setbg(4);
-    //     snprintf(buf, len, " %-*s", 7, " Edit ");
-    //     output_str(buf);
-    // }
-
-    char* langmode = "Text";
-    int langlen = strlen(langmode);
-
-    int status_len = window.width - 11 - langlen;
-    char status_buf[status_len];
-    snprintf(status_buf, status_len, "%d/%d   %d:%d  %s  %s", editor->buffer_id + 1, editor->buffers->size,
-        buffer->cursor.line, buffer->cursor.col, "LN", "Spaces(4)");
-
-    //output_setfg(0);
-    //output_setbg(7);
-    snprintf(buf, len, " %s %*s ", langmode, status_len, status_buf);
-    output_str(buf);
-
-    output_cup(window.y + 1, window.x);
-    //output_setfg(7);
-    //output_setbg(8);
-    //char str[512];
-    //snprintf(str, 512, "%d %u %u", editor->debug, editor->dx, editor->dy);
-    snprintf(buf, len, " %-*d", window.width - 1, editor->debug); //"'Message'");
-    output_str(buf);
 }
