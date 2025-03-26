@@ -123,6 +123,14 @@ void output_no_underline () {
     tputs(tparm(tigetstr("rmul")), 1, output_char);
 }
 
+void output_altchar_on () {
+    tputs(tparm(tigetstr("smacs")), 1, output_char);
+}
+
+void output_altchar_off () {
+    tputs(tparm(tigetstr("rmacs")), 1, output_char);
+}
+
 void output_cnorm () {
     tputs(tparm(tigetstr("cnorm")), 1, output_char);
 }

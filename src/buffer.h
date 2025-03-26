@@ -20,8 +20,8 @@ struct buffer {
     int32_t scroll_offset;
     int32_t scroll_pages;
 
-    char* title;
-    char* filename;
+    CharBuffer* title;
+    CharBuffer* filename;
 
     bool alt_mode;
     bool page_mode;

@@ -6,6 +6,10 @@ struct box {
     uint32_t x, y, width, height;
 };
 
+enum {
+    ALTCHAR_HLINE = 0x71,
+    ALTCHAR_VLINE = 0x78,
+};
 
 void output_init ();
 void output_fini ();
@@ -27,6 +31,9 @@ void output_bold ();
 void output_reverse ();
 void output_underline ();
 void output_no_underline ();
+
+void output_altchar_on ();
+void output_altchar_off ();
 
 void output_cnorm ();
 void output_civis ();
