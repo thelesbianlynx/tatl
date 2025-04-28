@@ -7,6 +7,10 @@ struct charbuffer {
     uint32_t capacity;
 
     char* buffer;
+
+    // Metadata for damage tracking.
+    bool damage;
+    int32_t lineno;
 };
 
 

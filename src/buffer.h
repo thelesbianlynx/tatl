@@ -8,6 +8,8 @@ struct point {
 };
 
 struct buffer {
+    Editor* editor;
+
     Array* lines;
 
     Point cursor;
@@ -39,13 +41,22 @@ struct buffer {
 };
 
 
-Buffer* buffer_create (const char* title);
+Buffer* buffer_create (Editor* editor, const char* title);
 
 void buffer_destroy (Buffer* buffer);
 
-void buffer_load (Buffer* buffer, const char* file);
+void buffer_load (Buffer* buffer, const char* filename);
 
 bool buffer_save (Buffer* buffer);
+
+void buffer_save_as (Buffer* buffer, const char* filename);
+
+void buffer_title (Buffer* buffer, const char* title);
+
+void buffer_prompt (Buffer* buffer, const char* prompt);
+
+bool buffer_empty (Buffer* buffer);
+
 
 void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint32_t my);
 
@@ -106,6 +117,9 @@ void buffer_selection_copy (Buffer* buffer, CharBuffer* dst);
 void buffer_selection_duplicate (Buffer* buffer, int32_t i);
 
 void buffer_selection_delete_whitespace (Buffer* buffer);
+
+
+void buffer_get_contents (Buffer* buffer, CharBuffer* dst);
 
 
 void buffer_undo (Buffer* buffer, int32_t i);

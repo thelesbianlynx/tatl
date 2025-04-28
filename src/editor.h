@@ -13,6 +13,10 @@ struct editor {
 
     CharBuffer* clipboard;
 
+    uint32_t alt_mode;
+    Buffer* alt_buffer;
+    Buffer* target_buffer;
+
     uint32_t mstate;
     uint32_t mx;
     uint32_t my;
@@ -28,7 +32,7 @@ void editor_draw (Editor* editor, int32_t width, int32_t height, int32_t* debug)
 
 CharBuffer* editor_get_clipboard (Editor* editor);
 
-void editor_new (Editor* editor);
+Buffer* editor_new (Editor* editor);
 void editor_open (Editor* editor);
 void editor_save (Editor* editor);
 void editor_save_all (Editor* editor);

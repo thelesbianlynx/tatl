@@ -10,24 +10,49 @@
 static void update_tab_bar (Editor* editor, Box box);
 static void draw_tab_bar (Editor* editor, Box box, uint32_t mstate, uint32_t mx, uint32_t my);
 
+enum alt_modes {
+    NORMAL = 0,
+    ALT_OPEN,
+    ALT_SAVE,
+    ALT_CLOSE,
+    ALT_FIND,
+    ALT_REPLACE,
+    ALT_COMMAND,
+};
+
 
 void editor_init (Editor* editor) {
     editor->buffers = array_create();
     editor->buffer_id = 0;
     editor->tab_bar = charbuffer_create();
     editor->tab_scroll = 0;
-    editor->tab_scroll_dmg = true;
     editor->clipboard = charbuffer_create();
+    editor->tab_scroll_dmg = true;
+    editor->alt_mode = NORMAL,
+    editor->alt_buffer = buffer_create(editor, "");
+    editor->alt_buffer->alt_mode = true;
+    editor->target_buffer = NULL;
     editor->mstate = 256;
     editor->mx = 0;
     editor->my = 0;
 
-    array_add(editor->buffers, buffer_create("Untitled"));
+
+    array_add(editor->buffers, buffer_create(editor, "Untitled"));
 }
 
 void editor_fini (Editor* editor) {
     array_destroy(editor->buffers);
 }
+
+
+static inline
+Buffer* get_buffer (Editor* editor) {
+    editor->buffer_id = MOD(editor->buffer_id, editor->buffers->size);
+    Buffer* buffer = editor->buffers->data[editor->buffer_id];
+    return buffer;
+}
+
+
 
 
 //
@@ -36,7 +61,7 @@ void editor_fini (Editor* editor) {
 bool editor_update (Editor* editor, InputEvent* event) {
     if (editor->buffers->size == 0) return false;
 
-    Buffer* buffer = editor->buffers->data[editor->buffer_id];
+    Buffer* buffer = editor->alt_mode == NORMAL ? get_buffer(editor) : editor->alt_buffer;
 
     if (event->type == INPUT_ESC) {
         // Escape: Exit Editor.
@@ -92,11 +117,16 @@ void editor_draw (Editor* editor, int32_t width, int32_t height, int32_t* debug)
 
     // Buffer.
     {
-        editor->buffer_id = MOD(editor->buffer_id, editor->buffers->size);
-        Buffer* buffer = editor->buffers->data[editor->buffer_id];
+        Buffer* buffer = get_buffer(editor);
 
         Box box = {0, 3, width, height - 4};
         buffer_draw(buffer, box, editor->mstate, editor->mx, editor->my);
+    }
+
+    // Alt-Buffer.
+    if (editor->alt_mode != NORMAL) {
+        Box box = {0, height - 1, width, 1};
+        buffer_draw(editor->alt_buffer, box, editor->mstate, editor->mx, editor->my);
     }
 
     // Commit Frame.
@@ -116,45 +146,70 @@ CharBuffer* editor_get_clipboard (Editor* editor) {
 //
 // File Operations.
 //
-void editor_new (Editor* editor) {
-    Buffer* buffer = buffer_create("Untitled");
+Buffer* editor_new (Editor* editor) {
+    Buffer* buffer = buffer_create(editor, "Untitled");
     array_insert(editor->buffers, editor->buffer_id + 1, buffer);
-    editor_buffer_next(editor);
+    editor->buffer_id = MOD(editor->buffer_id + 1, editor->buffers->size);
+    editor->tab_scroll_dmg = true;
+    return buffer;
 }
 
 void editor_open (Editor* editor) {
+    if (editor->alt_mode != NORMAL) return;
 
+    editor->alt_mode = ALT_OPEN;
+    editor->target_buffer = get_buffer(editor);
+    buffer_prompt(editor->alt_buffer, "");
+    buffer_title(editor->alt_buffer, "(Open)");
 }
 
 void editor_save (Editor* editor) {
+    if (editor->alt_mode != NORMAL) return;
 
+    Buffer* buffer = get_buffer(editor);
+    if (!buffer_save(buffer)) {
+        editor->alt_mode = ALT_SAVE;
+        editor->target_buffer = get_buffer(editor);
+        buffer_prompt(editor->alt_buffer, buffer->filename->buffer); // This Line is bad!!
+        buffer_title(editor->alt_buffer, "(Save)");
+    }
 }
 
 void editor_save_all (Editor* editor) {
-
+    if (editor->alt_mode != NORMAL) return;
 }
 
 void editor_save_as (Editor* editor) {
+    if (editor->alt_mode != NORMAL) return;
 
+    Buffer* buffer = get_buffer(editor);
+    editor->alt_mode = ALT_SAVE;
+    editor->target_buffer = buffer;
+    buffer_prompt(editor->alt_buffer, buffer->filename->buffer);
+    buffer_title(editor->alt_buffer, "(Save)");
 }
 
 //
 // Window Operations.
 //
 void editor_close (Editor* editor) {
+    if (editor->alt_mode != NORMAL) return;
 
 }
 
 void editor_quit (Editor* editor) {
+    if (editor->alt_mode != NORMAL) return;
 
 }
 
 void editor_buffer_next (Editor* editor) {
+    if (editor->alt_mode != NORMAL) return;
     editor->buffer_id = MOD(editor->buffer_id + 1, editor->buffers->size);
     editor->tab_scroll_dmg = true;
 }
 
 void editor_buffer_prev (Editor* editor) {
+    if (editor->alt_mode != NORMAL) return;
     editor->buffer_id = MOD(editor->buffer_id - 1, editor->buffers->size);
     editor->tab_scroll_dmg = true;
 }
@@ -165,7 +220,28 @@ void editor_buffer_prev (Editor* editor) {
 //
 
 void editor_altbuffer_enter (Editor* editor) {
+    Buffer* buffer = editor->target_buffer;
+    if (buffer == NULL) return;
 
+    if (editor->alt_mode == ALT_SAVE) {
+        CharBuffer* savename = charbuffer_create();
+        buffer_get_contents(editor->alt_buffer, savename);
+
+        buffer_save_as(buffer, savename->buffer);
+    }
+    else if (editor->alt_mode == ALT_OPEN) {
+        if (!buffer_empty(buffer)) {
+            buffer = editor_new(editor);
+        }
+
+        CharBuffer* openname = charbuffer_create();
+        buffer_get_contents(editor->alt_buffer, openname);
+
+        buffer_load(buffer, openname->buffer);
+    }
+
+    editor->alt_mode = NORMAL;
+    editor->target_buffer = NULL;
 }
 
 void editor_altbuffer_tab (Editor* editor) {
@@ -348,5 +424,36 @@ void draw_tab_bar (Editor* editor, Box box, uint32_t mstate, uint32_t mx, uint32
         }
     }
 
-
 }
+
+
+// //
+// // Altbuffer Line.
+// //
+//
+// static
+// void draw_alt_buffer (Editor* editor, Box box) {
+//     const char* prompt;
+//     switch (editor->alt_mode) {
+//         case ALT_OPEN:
+//             prompt = " (Open) ";
+//             break;
+//         case ALT_SAVE:
+//             prompt = " (SAVE) ";
+//             break;
+//         default:
+//             return;
+//     }
+//
+//     int prompt_len = strlen(prompt);
+//
+//     CharBuffer* contents = charbuffer_create();
+//     buffer_get_contents(editor->alt_buffer, contents);
+//
+//     char buf[box.width + 1];
+//     snprintf("%s%s", box.width + 1, prompt, contents->buffer);
+//     output_cup(box.y, box.x);
+//     output_str(buf);
+//     output_cup(box.y, box.x + prompt_len + editor->alt_buffer->cursor.col);
+//
+// }

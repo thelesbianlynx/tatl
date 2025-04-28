@@ -7,6 +7,8 @@ CharBuffer* charbuffer_create () {
     cb->size = 0;
     cb->capacity = 1024;
     cb->buffer = calloc(cb->capacity, sizeof(char));
+    cb->damage = true;
+    cb->lineno = 0;
     return cb;
 }
 
@@ -44,6 +46,7 @@ void charbuffer_achar (CharBuffer* cb, char ch) {
 
     cb->buffer[cb->size] = ch;
     cb->size++;
+    cb->damage = true;
 }
 
 // Append Characters.
@@ -59,6 +62,7 @@ void charbuffer_achars (CharBuffer* cb, CharBuffer* src) {
         cb->buffer[cb->size + i] = src->buffer[i];
 
     cb->size += src->size;
+    cb->damage = true;
 }
 
 // Append String.
@@ -75,6 +79,7 @@ void charbuffer_astr (CharBuffer* cb, const char* str) {
         cb->buffer[cb->size + i] = str[i];
 
     cb->size += len;
+    cb->damage = true;
 }
 
 // Insert Character.
@@ -92,6 +97,7 @@ void charbuffer_ichar (CharBuffer* cb, char ch, uint32_t i) {
 
     cb->buffer[i] = ch;
     cb->size++;
+    cb->damage = true;
 }
 
 // Insert Characters.
@@ -115,6 +121,7 @@ void charbuffer_ichars (CharBuffer* cb, CharBuffer* src, uint32_t i) {
         cb->buffer[x + i] = src->buffer[x];
 
     cb->size += src->size;
+    cb->damage = true;
 }
 
 // Insert String.
@@ -139,6 +146,7 @@ void charbuffer_istr (CharBuffer* cb, const char* str, uint32_t i){
         cb->buffer[x + i] = str[x];
 
     cb->size += len;
+    cb->damage = true;
 }
 
 uint32_t charbuffer_get (CharBuffer* cb, uint32_t i) {
@@ -164,6 +172,7 @@ void charbuffer_get_substr (CharBuffer* cb, CharBuffer* dst, uint32_t i, uint32_
     }
 
     dst->size += len;
+    dst->damage = true;
 }
 
 void charbuffer_get_prefix (CharBuffer* cb, CharBuffer* dst, uint32_t i) {
@@ -195,6 +204,7 @@ void charbuffer_rm_substr (CharBuffer* cb, uint32_t i, uint32_t j) {
     }
 
     cb->size -= len;
+    cb->damage = true;
 }
 
 void charbuffer_rm_prefix (CharBuffer* cb, uint32_t i) {

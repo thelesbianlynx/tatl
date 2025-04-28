@@ -2,6 +2,7 @@
 
 #include "array.h"
 #include "charbuffer.h"
+#include "editor.h"
 #include "output.h"
 
 static int32_t cursor_fake_col (Buffer* buffer, CharBuffer* line, int32_t real_col);
@@ -9,8 +10,10 @@ static int32_t cursor_real_col (Buffer* buffer, CharBuffer* line, int32_t fake_c
 static void update_mem (Buffer* buffer);
 static void update_scroll (Buffer* buffer);
 
-Buffer* buffer_create (const char* title) {
+Buffer* buffer_create (Editor* editor, const char* title) {
     Buffer* buffer = malloc(sizeof(Buffer));
+
+    buffer->editor = editor;
 
     buffer->lines = array_create();
     array_add(buffer->lines, charbuffer_create());
@@ -73,19 +76,32 @@ void buffer_destroy (Buffer* buffer) {
 }
 
 void buffer_load (Buffer* buffer, const char* filename) {
+    if (buffer->alt_mode) return;
+    FILE* f = fopen(filename, "r");
+    if (f == NULL) {
+        return;
+    }
+
     for (int i = 0; i < buffer->lines->size; ++i) {
         charbuffer_destroy(buffer->lines->data[i]);
     }
     array_clear(buffer->lines);
 
-    FILE* f = fopen(filename, "r");
     for (;;) {
         CharBuffer* line = charbuffer_create();
         bool b = charbuffer_read_line(line, f);
-        array_add (buffer->lines, line);
+        array_add(buffer->lines, line);
         if (!b) break;
     }
+
     fclose(f);
+
+    if (buffer->lines->size == 0) {
+        CharBuffer* line = charbuffer_create();
+        array_add(buffer->lines, line);
+    }
+
+    buffer_cursor_goto(buffer, 0, 0, false);
 
     charbuffer_clear(buffer->title);
     charbuffer_clear(buffer->filename);
@@ -94,16 +110,69 @@ void buffer_load (Buffer* buffer, const char* filename) {
 }
 
 bool buffer_save (Buffer* buffer) {
-
+    if (buffer->alt_mode) return true;
+    if (buffer->filename->size > 0) {
+        FILE* f = fopen(buffer->filename->buffer, "w");
+        for (int i = 0; i < buffer->lines->size; i++) {
+            CharBuffer* line = buffer->lines->data[i];
+            fprintf(f, "%s\n", line->buffer);
+        }
+        fclose(f);
+        return true;
+    }
     return false;
 }
+
+void buffer_save_as (Buffer* buffer, const char* filename) {
+    if (buffer->alt_mode) return;
+    charbuffer_clear(buffer->title);
+    charbuffer_clear(buffer->filename);
+    charbuffer_astr(buffer->title, filename + last_separator(filename));
+    charbuffer_astr(buffer->filename, filename);
+
+    buffer_save(buffer);
+}
+
+void buffer_title (Buffer* buffer, const char* title) {
+    if (!buffer->alt_mode) return;
+    charbuffer_clear(buffer->title);
+    charbuffer_astr(buffer->title, title);
+}
+
+void buffer_prompt (Buffer* buffer, const char* prompt) {
+    if (!buffer->alt_mode) return;
+    for (int i = 0; i < buffer->lines->size; ++i) {
+        charbuffer_destroy(buffer->lines->data[i]);
+    }
+    array_clear(buffer->lines);
+
+    CharBuffer* line = charbuffer_create();
+    charbuffer_astr(line, prompt);
+    array_add(buffer->lines, line);
+}
+
+bool buffer_empty (Buffer* buffer) {
+    if (buffer->lines->size == 1) {
+        CharBuffer* line = buffer->lines->data[0];
+        if (line->size == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 
 void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint32_t my) {
     // Line Number Width.
     int32_t ln_width = (int) log10(buffer->lines->size + 1) + 3;
 
+    // Alt Buffer Prompt width.
+    if (buffer->alt_mode) {
+        ln_width = buffer->title->size;
+    }
+
     // Text Area Size.
-    int text_heght = window.height - 3;
+    int text_heght = window.height > 3 ? window.height - 3 : window.height;
 
     // Final Cursor Position.
     int32_t cx = -1,  cy = -1;
@@ -145,10 +214,12 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
 
     // Update Scroll Position.
     if (buffer->scroll_damage) {
-        if (buffer->cursor.line < buffer->scroll_line) {
-            buffer->scroll_line = buffer->cursor.line;
-        } else if (buffer->cursor.line > buffer->scroll_line + text_heght - 2) {
-            buffer->scroll_line = buffer->cursor.line - text_heght + 2;
+        if (!buffer->alt_mode) {
+            if (buffer->cursor.line < buffer->scroll_line) {
+                buffer->scroll_line = buffer->cursor.line;
+            } else if (buffer->cursor.line > buffer->scroll_line + text_heght - 2) {
+                buffer->scroll_line = buffer->cursor.line - text_heght + 2;
+            }
         }
         buffer->scroll_damage = false;
     }
@@ -178,25 +249,11 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
 
     // Buffer.
     for (int i = 0; i < text_heght; i++) {
-        // Last Line.
-        // bool last = false;
-        // if (i == window.height - 3) {
-        //     last = true;
-        //     output_underline();
-        // }
 
         int lineno = i + buffer->scroll_line;
 
         //End of File.
         if (lineno >= buffer->lines->size) {
-            // if (last) {
-            //     for (int j = 0; j < ln_width; j++) {
-            //         output_char(' ');
-            //     }
-            //     for (int j = ln_width; j < window.width; j++) {
-            //         output_char(' ');
-            //     }
-            // }
             break;
         }
 
@@ -205,13 +262,19 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
         // Line Number.
         output_cup(window.y + i, window.x);
         output_bold();
-        char ln_buf[ln_width + 1];
-        snprintf(ln_buf, ln_width + 1, "%*d ", ln_width - 1 , lineno + 1);
-        output_str(ln_buf);
+        if (!buffer->alt_mode) {
+            char ln_buf[ln_width + 1];
+            snprintf(ln_buf, ln_width + 1, "%*d ", ln_width - 1 , lineno + 1);
+            output_str(ln_buf);
+        } else {
+            // Alt mode prompt instead of line number.
+            for (int j = 0; j < buffer->title->size; ++j) {
+                output_char(buffer->title->buffer[j]);
+            }
+        }
 
         // Line Text.
         output_normal();
-        //if (last) output_underline();
         if (in_selection) output_reverse();
         output_char(' ');
 
@@ -226,7 +289,6 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
             if (buffer->cursor.line == lineno && buffer->cursor.col == j) {
                 in_selection = !in_selection;
                 output_normal();
-                //if (last) output_underline();
                 if (in_selection) output_reverse();
                 cx = col + ln_width + 1;
                 cy = i;
@@ -235,7 +297,6 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
             if (buffer->selection.line == lineno && buffer->selection.col == j) {
                 in_selection = !in_selection;
                 output_normal();
-                //if (last) output_underline();
                 if (in_selection) output_reverse();
             }
 
@@ -257,41 +318,33 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
 
         }
 
-        // Rest Of Line.
-        // if (last) {
-        //     if (in_selection) {
-        //         output_normal();
-        //         output_underline();
-        //     }
-        //     for (int j = col + ln_width + 1; j < window.width; j++) {
-        //         output_char(' ');
-        //     }
-        // }
         output_normal();
     }
 
     // Status Line.
-    char status_buf[len];
-    char left_buf[len];
-    char right_buf[len];
-    snprintf(left_buf, len, " %d:%d", buffer->cursor.line + 1, buffer->cursor.col + 1);
-    snprintf(right_buf, len, "%s  %s  %s ", "LN", "Utf-8", "Plain Text");
-    snprintf(status_buf, len, "%s%*s", left_buf, window.width - (int) strlen(left_buf), right_buf);
+    if (window.height > 3) {
+        char status_buf[len];
+        char left_buf[len];
+        char right_buf[len];
+        snprintf(left_buf, len, " %d:%d", buffer->cursor.line + 1, buffer->cursor.col + 1);
+        snprintf(right_buf, len, "%s  %s  %s ", "LN", "Utf-8", "Plain Text");
+        snprintf(status_buf, len, "%s%*s", left_buf, window.width - (int) strlen(left_buf), right_buf);
 
-    output_cup(window.y + window.height - 3, window.x);
-    output_altchar_on();
-    for (int i = 0; i < window.width; ++i)
-        output_char(ALTCHAR_HLINE);
-    output_altchar_off();
+        output_cup(window.y + window.height - 3, window.x);
+        output_altchar_on();
+        for (int i = 0; i < window.width; ++i)
+            output_char(ALTCHAR_HLINE);
+        output_altchar_off();
 
-    output_cup(window.y + window.height - 2, window.x);
-    output_str(status_buf);
+        output_cup(window.y + window.height - 2, window.x);
+        output_str(status_buf);
 
-    output_cup(window.y + window.height - 1, window.x);
-    output_altchar_on();
-    for (int i = 0; i < window.width; ++i)
-        output_char(ALTCHAR_HLINE);
-    output_altchar_off();
+        output_cup(window.y + window.height - 1, window.x);
+        output_altchar_on();
+        for (int i = 0; i < window.width; ++i)
+            output_char(ALTCHAR_HLINE);
+        output_altchar_off();
+    }
 
 
     // Set Final Cursor Position.
@@ -372,7 +425,10 @@ void buffer_edit_text (Buffer* buffer, CharBuffer* text, int32_t i) {
 }
 
 void buffer_edit_line (Buffer* buffer, int32_t i) {
-    if (buffer->alt_mode) return;
+    if (buffer->alt_mode) {
+        editor_altbuffer_enter(buffer->editor);
+        return;
+    }
     delete_selection(buffer);
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
@@ -390,7 +446,10 @@ void buffer_edit_line (Buffer* buffer, int32_t i) {
 }
 
 void buffer_edit_tab (Buffer* buffer, int32_t i) {
-    if (buffer->alt_mode) return;
+    if (buffer->alt_mode) {
+        editor_altbuffer_tab(buffer->editor);
+        return;
+    }
     if (buffer->cursor.line == buffer->selection.line && buffer->cursor.col == buffer->selection.col) {
         if (buffer->hard_tabs) {
             buffer_edit_char(buffer, '\t', i);
@@ -580,7 +639,11 @@ void buffer_cursor_goto (Buffer* buffer, int32_t row, int32_t col, bool sel) {
 }
 
 void buffer_cursor_line (Buffer* buffer, int32_t i, bool sel) {
-    if (buffer->alt_mode) return;
+    if (buffer->alt_mode) {
+        if (i > 0) editor_altbuffer_up(buffer->editor);
+        if (i < 0) editor_altbuffer_down(buffer->editor);
+        return;
+    }
     buffer->cursor.line += i;
     if (buffer->cursor.line <= 0) buffer->cursor.line = 0;
     if (buffer->cursor.line >= buffer->lines->size) buffer->cursor.line = buffer->lines->size - 1;
@@ -898,9 +961,25 @@ void buffer_selection_delete_whitespace (Buffer* buffer) {
 }
 
 
-void buffer_undo (Buffer* buffer, int32_t i) {}
+void buffer_get_contents (Buffer* buffer, CharBuffer* dst) {
+    if (buffer->alt_mode) {
+        CharBuffer* line = buffer->lines->data[0];
+        charbuffer_achars(dst, line);
+    } else {
+        // ,,,
+    }
+}
 
-void buffer_redo (Buffer* buffer, int32_t i) {}
+
+void buffer_undo (Buffer* buffer, int32_t i) {
+
+
+}
+
+void buffer_redo (Buffer* buffer, int32_t i) {
+
+
+}
 
 
 static
