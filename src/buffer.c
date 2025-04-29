@@ -31,6 +31,8 @@ Buffer* buffer_create (Editor* editor, const char* title) {
 
     charbuffer_astr(buffer->title, title);
 
+    buffer->modified = true;
+
     buffer->alt_mode = false;
     buffer->page_mode = false;
     buffer->block_mode = false;
@@ -38,16 +40,6 @@ Buffer* buffer_create (Editor* editor, const char* title) {
 
     buffer->tab_width = 4;
     buffer->hard_tabs = false;
-
-    // Load contents.
-    // FILE* f = fopen(file, "r");
-    // for (;;) {
-    //     CharBuffer* line = charbuffer_create();
-    //     bool b = charbuffer_read_line(line, f);
-    //     array_add (buffer->lines, line);
-    //     if (!b) break;
-    // }
-    // fclose(f);
 
     return buffer;
 }
@@ -77,36 +69,34 @@ void buffer_destroy (Buffer* buffer) {
 
 void buffer_load (Buffer* buffer, const char* filename) {
     if (buffer->alt_mode) return;
-    FILE* f = fopen(filename, "r");
-    if (f == NULL) {
-        return;
-    }
-
     for (int i = 0; i < buffer->lines->size; ++i) {
         charbuffer_destroy(buffer->lines->data[i]);
     }
     array_clear(buffer->lines);
 
-    for (;;) {
-        CharBuffer* line = charbuffer_create();
-        bool b = charbuffer_read_line(line, f);
-        array_add(buffer->lines, line);
-        if (!b) break;
-    }
+    FILE* f = fopen(filename, "r");
+    if (f != NULL) {
+        for (;;) {
+            CharBuffer* line = charbuffer_create();
+            bool b = charbuffer_read_line(line, f);
+            array_add(buffer->lines, line);
+            if (!b) break;
+        }
 
-    fclose(f);
+        fclose(f);
+    }
 
     if (buffer->lines->size == 0) {
         CharBuffer* line = charbuffer_create();
         array_add(buffer->lines, line);
     }
 
-    buffer_cursor_goto(buffer, 0, 0, false);
-
     charbuffer_clear(buffer->title);
     charbuffer_clear(buffer->filename);
     charbuffer_astr(buffer->title, filename + last_separator(filename));
     charbuffer_astr(buffer->filename, filename);
+    buffer_cursor_goto(buffer, 0, 0, false);
+    buffer->modified = false;
 }
 
 bool buffer_save (Buffer* buffer) {
@@ -118,6 +108,7 @@ bool buffer_save (Buffer* buffer) {
             fprintf(f, "%s\n", line->buffer);
         }
         fclose(f);
+        buffer->modified = false;
         return true;
     }
     return false;
@@ -149,6 +140,7 @@ void buffer_prompt (Buffer* buffer, const char* prompt) {
     CharBuffer* line = charbuffer_create();
     charbuffer_astr(line, prompt);
     array_add(buffer->lines, line);
+    buffer_cursor_goto(buffer, 0, INT_MAX, false);
 }
 
 bool buffer_empty (Buffer* buffer) {

@@ -28,6 +28,7 @@ void output_normal ();
 void output_setfg (int32_t fg);
 void output_setbg (int32_t bg);
 void output_bold ();
+void output_italic ();
 void output_reverse ();
 void output_underline ();
 void output_no_underline ();

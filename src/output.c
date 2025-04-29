@@ -111,6 +111,10 @@ void output_bold () {
     tputs(tparm(tigetstr("bold")), 1, output_char);
 }
 
+void output_italic () {
+    tputs(tparm(tigetstr("sitm")), 1, output_char);
+}
+
 void output_reverse () {
     tputs(tparm(tigetstr("rev")), 1, output_char);
 }

@@ -24,7 +24,7 @@ struct editor {
 };
 
 
-void editor_init (Editor* editor);
+void editor_init (Editor* editor, Array* filenames);
 void editor_fini (Editor* editor);
 
 bool editor_update (Editor* editor, InputEvent* event);

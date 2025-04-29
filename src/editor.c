@@ -21,7 +21,7 @@ enum alt_modes {
 };
 
 
-void editor_init (Editor* editor) {
+void editor_init (Editor* editor, Array* filenames) {
     editor->buffers = array_create();
     editor->buffer_id = 0;
     editor->tab_bar = charbuffer_create();
@@ -36,12 +36,22 @@ void editor_init (Editor* editor) {
     editor->mx = 0;
     editor->my = 0;
 
-
-    array_add(editor->buffers, buffer_create(editor, "Untitled"));
+    if (filenames->size == 0) {
+        array_add(editor->buffers, buffer_create(editor, "Untitled"));
+    } else {
+        for (int i = 0; i < filenames->size; ++i) {
+            Buffer* buffer = buffer_create(editor, "");
+            buffer_load(buffer, filenames->data[i]);
+            array_add(editor->buffers, buffer);
+        }
+    }
 }
 
 void editor_fini (Editor* editor) {
     array_destroy(editor->buffers);
+    charbuffer_destroy(editor->tab_bar);
+    charbuffer_destroy(editor->clipboard);
+    buffer_destroy(editor->alt_buffer);
 }
 
 
@@ -64,8 +74,11 @@ bool editor_update (Editor* editor, InputEvent* event) {
     Buffer* buffer = editor->alt_mode == NORMAL ? get_buffer(editor) : editor->alt_buffer;
 
     if (event->type == INPUT_ESC) {
-        // Escape: Exit Editor.
-        return false;
+        if (editor->alt_mode == NORMAL) {
+            return false;
+        } else {
+            editor->alt_mode = NORMAL;
+        }
     } else if (event->type == INPUT_CHAR) {
         // Character Event.
         uint32_t c = event->charcode;
@@ -169,7 +182,7 @@ void editor_save (Editor* editor) {
     Buffer* buffer = get_buffer(editor);
     if (!buffer_save(buffer)) {
         editor->alt_mode = ALT_SAVE;
-        editor->target_buffer = get_buffer(editor);
+        editor->target_buffer = buffer;
         buffer_prompt(editor->alt_buffer, buffer->filename->buffer); // This Line is bad!!
         buffer_title(editor->alt_buffer, "(Save)");
     }
@@ -185,7 +198,7 @@ void editor_save_as (Editor* editor) {
     Buffer* buffer = get_buffer(editor);
     editor->alt_mode = ALT_SAVE;
     editor->target_buffer = buffer;
-    buffer_prompt(editor->alt_buffer, buffer->filename->buffer);
+    buffer_prompt(editor->alt_buffer, buffer->filename->buffer); // So is this one!!
     buffer_title(editor->alt_buffer, "(Save)");
 }
 
@@ -410,50 +423,23 @@ void draw_tab_bar (Editor* editor, Box box, uint32_t mstate, uint32_t mx, uint32
     output_cup(box.y + 1, box.x);
     int bid = bid_start;
     if (editor->buffer_id == bid_start) output_bold();
+    if (((Buffer*)editor->buffers->data[0])->modified) output_italic();
     for (int i = 0; i < box.width && i < editor->tab_bar->size; ++i) {
         char c = editor->tab_bar->buffer[i + editor->tab_scroll];
         if (c == '\n') {
-            if (bid == editor->buffer_id) output_normal();
+            output_normal();
             output_altchar_on();
             output_char(ALTCHAR_VLINE);
             output_altchar_off();
             bid++;
             if (bid == editor->buffer_id) output_bold();
+            if (bid < editor->buffers->size) {
+                Buffer* buf = editor->buffers->data[bid];
+                if (buf->modified) output_italic();
+            }
         } else {
             output_char(c);
         }
     }
-
+    output_normal();
 }
-
-
-// //
-// // Altbuffer Line.
-// //
-//
-// static
-// void draw_alt_buffer (Editor* editor, Box box) {
-//     const char* prompt;
-//     switch (editor->alt_mode) {
-//         case ALT_OPEN:
-//             prompt = " (Open) ";
-//             break;
-//         case ALT_SAVE:
-//             prompt = " (SAVE) ";
-//             break;
-//         default:
-//             return;
-//     }
-//
-//     int prompt_len = strlen(prompt);
-//
-//     CharBuffer* contents = charbuffer_create();
-//     buffer_get_contents(editor->alt_buffer, contents);
-//
-//     char buf[box.width + 1];
-//     snprintf("%s%s", box.width + 1, prompt, contents->buffer);
-//     output_cup(box.y, box.x);
-//     output_str(buf);
-//     output_cup(box.y, box.x + prompt_len + editor->alt_buffer->cursor.col);
-//
-// }

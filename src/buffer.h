@@ -25,6 +25,8 @@ struct buffer {
     CharBuffer* title;
     CharBuffer* filename;
 
+    bool modified;
+
     bool alt_mode;
     bool page_mode;
     bool block_mode;

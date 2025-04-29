@@ -17,7 +17,7 @@ action_fn actions[MAX_ACTIONS] = {
 
     [CTRL('N')] = a_new,
     [CTRL('O')] = a_open,
-    [CTRL('S')] = a_save,
+    [CTRL('S')] = a_save_as,
 
     [CTRL('Q')] = a_quit,
     [CTRL('W')] = a_close,

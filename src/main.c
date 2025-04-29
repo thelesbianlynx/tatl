@@ -2,16 +2,34 @@
 
 #include <sys/ioctl.h>
 
+#include "array.h"
 #include "input.h"
 #include "output.h"
 #include "editor.h"
 
 
-int main () {
+int main (int argc, char** argv) {
+    //
+    // Process Arguments
+    //
+    Array* filenames = array_create();
+    for (int i = 1; i < argc; ++i) {
+        if (argv[i][0] == '-') {
+            // Handle Option.
+            continue;
+        }
+
+        // Add file to list.
+        array_add(filenames, argv[i]);
+    }
+
+    //
+    // Launch Editor.
+    //
     output_init();
 
     struct editor editor;
-    editor_init(&editor);
+    editor_init(&editor, filenames);
 
     InputEvent event;
 
