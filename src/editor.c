@@ -32,6 +32,7 @@ void editor_init (Editor* editor, Array* filenames) {
     editor->alt_buffer = buffer_create(editor, "");
     editor->alt_buffer->alt_mode = true;
     editor->target_buffer = NULL;
+    editor->should_quit = false;
     editor->mstate = 256;
     editor->mx = 0;
     editor->my = 0;
@@ -74,11 +75,11 @@ bool editor_update (Editor* editor, InputEvent* event) {
     Buffer* buffer = editor->alt_mode == NORMAL ? get_buffer(editor) : editor->alt_buffer;
 
     if (event->type == INPUT_ESC) {
-        if (editor->alt_mode == NORMAL) {
-            return false;
-        } else {
+        // if (editor->alt_mode == NORMAL) {
+        //     return false;
+        // } else {
             editor->alt_mode = NORMAL;
-        }
+        // }
     } else if (event->type == INPUT_CHAR) {
         // Character Event.
         uint32_t c = event->charcode;
@@ -107,6 +108,27 @@ bool editor_update (Editor* editor, InputEvent* event) {
         // Else: Fixed-Function Action.
         action_fn a = fixed_actions[event->type];
         if (a) a(editor, buffer, 1);
+    }
+
+    // Handle Close and Quit.
+
+    if (editor->should_quit) {
+        for (int i = 0; i < editor->buffers->size; ++i) {
+            Buffer* buffer = editor->buffers->data[i];
+            buffer_destroy(buffer);
+            array_clear(editor->buffers);
+            return false;
+        }
+    }
+
+    for (int i = 0; i < editor->buffers->size; ) {
+        Buffer* buffer = editor->buffers->data[i];
+        if (buffer->should_close) {
+            array_remove(editor->buffers, i);
+            if (editor->buffers->size == 0) return false;
+        } else {
+            i++;
+        }
     }
 
     return true;
@@ -206,13 +228,20 @@ void editor_save_as (Editor* editor) {
 // Window Operations.
 //
 void editor_close (Editor* editor) {
-    if (editor->alt_mode != NORMAL) return;
-
+    if (editor->alt_mode != NORMAL) {
+        editor->alt_mode = NORMAL;
+        return;
+    }
+    Buffer* buffer = get_buffer(editor);
+    buffer->should_close = true;
 }
 
 void editor_quit (Editor* editor) {
-    if (editor->alt_mode != NORMAL) return;
-
+    if (editor->alt_mode != NORMAL) {
+        editor->alt_mode = NORMAL;
+        return;
+    }
+    editor->should_quit = true;
 }
 
 void editor_buffer_next (Editor* editor) {

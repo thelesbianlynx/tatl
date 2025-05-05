@@ -41,6 +41,8 @@ Buffer* buffer_create (Editor* editor, const char* title) {
     buffer->tab_width = 4;
     buffer->hard_tabs = false;
 
+    buffer->should_close = false;
+
     return buffer;
 }
 
@@ -385,6 +387,7 @@ bool delete_selection (Buffer* buffer) {
     buffer->cursor = buffer->selection = begin;
     update_mem(buffer);
     update_scroll(buffer);
+    buffer->modified = true;
     return true;
 }
 
@@ -398,6 +401,7 @@ void buffer_edit_char (Buffer* buffer, uint32_t ch, int32_t i) {
     }
 
     buffer->selection = buffer->cursor;
+    buffer->modified = true;
     update_mem(buffer);
     update_scroll(buffer);
 }
@@ -433,6 +437,7 @@ void buffer_edit_line (Buffer* buffer, int32_t i) {
     }
 
     buffer->selection = buffer->cursor;
+    buffer->modified = true;
     update_mem(buffer);
     update_scroll(buffer);
 }
@@ -526,6 +531,7 @@ void buffer_edit_indent (Buffer* buffer, int32_t i) {
             }
         }
     }
+    buffer->modified = true;
     update_mem(buffer);
     update_scroll(buffer);
 }
@@ -546,6 +552,7 @@ void buffer_edit_delete (Buffer* buffer, int32_t i) {
         }
     }
 
+    buffer->modified = true;
     update_scroll(buffer);
 }
 
@@ -570,6 +577,7 @@ void buffer_edit_backspace (Buffer* buffer, int32_t i) {
     }
 
     buffer->selection = buffer->cursor;
+    buffer->modified = true;
     update_mem(buffer);
     update_scroll(buffer);
 }
@@ -608,6 +616,8 @@ void buffer_edit_move_line (Buffer* buffer, int32_t i) {
             buffer->selection.line++;
         }
     }
+
+    buffer->modified = true;
 }
 
 

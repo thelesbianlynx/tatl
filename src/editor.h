@@ -17,6 +17,8 @@ struct editor {
     Buffer* alt_buffer;
     Buffer* target_buffer;
 
+    bool should_quit;
+
     uint32_t mstate;
     uint32_t mx;
     uint32_t my;

@@ -35,6 +35,8 @@ struct buffer {
     int32_t tab_width;
     bool hard_tabs;
 
+    bool should_close;
+
     // Undo/Redo Stack.
     // ...
 
