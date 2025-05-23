@@ -1,7 +1,7 @@
 SOURCES = $(wildcard src/*.c)
 OBJECTS = $(patsubst src/%.c, out/%.o, $(SOURCES))
 
-NAME = catnip
+NAME = tatl
 
 $(NAME): $(OBJECTS)
 	gcc $(OBJECTS) -o $(NAME) -lm -lncurses
