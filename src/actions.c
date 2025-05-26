@@ -41,47 +41,39 @@ action_fn actions[MAX_ACTIONS] = {
 
     // -- Alt Actions -- //
 
-    ['i'] = a_up,
-    ['j'] = a_left,
-    ['k'] = a_down,
-    ['l'] = a_right,
+    ['i'] = a_cursor_up,
+    ['j'] = a_cursor_backward,
+    ['k'] = a_cursor_down,
+    ['l'] = a_cursor_forward,
 
     ['I'] = a_select_up,
-    ['J'] = a_select_left,
+    ['J'] = a_select_backward,
     ['K'] = a_select_down,
-    ['L'] = a_select_right,
+    ['L'] = a_select_backward,
 
-    ['o'] = a_word_left,
-    ['p'] = a_word_right,
+    ['p'] = a_cursor_forward_word,
+    ['o'] = a_cursor_backward_word,
 
-    ['O'] = a_select_word_left,
-    ['P'] = a_select_word_right,
+    ['P'] = a_select_forward_word,
+    ['O'] = a_select_backward_word,
 
-    ['a'] = a_line_begin,
-    ['z'] = a_line_end,
+    ['u'] = a_cursor_up_paragraph,
+    ['h'] = a_cursor_down_paragraph,
+
+    ['U'] = a_select_up_paragraph,
+    ['H'] = a_select_down_paragraph,
+
+    ['a'] = a_cursor_line_begin,
+    ['z'] = a_cursor_line_end,
 
     ['A'] = a_select_line_begin,
     ['Z'] = a_select_line_end,
 
-    [','] = a_paragraph_up,
-    ['.'] = a_paragraph_down,
-
-    ['<'] = a_select_paragraph_up,
-    ['>'] = a_select_paragraph_down,
-
-    ['\\'] = a_to_matching,
-    ['['] = a_to_opening,
-    [']'] = a_to_closing,
-
-    ['|'] = a_select_to_matching,
-    ['{'] = a_select_to_opening,
-    ['}'] = a_select_to_closing,
-
     ['w'] = a_select_word,
     ['e'] = a_select_line,
 
-    ['s'] = a_select_swap,
-    ['S'] = a_duplicate,
+    ['s'] = a_selection_swap,
+    ['S'] = a_selection_duplicate,
 
     ['d'] = a_delete,
     ['D'] = a_delete_lines,
@@ -96,10 +88,11 @@ action_fn actions[MAX_ACTIONS] = {
     ['m'] = a_move_line_down,
     ['M'] = a_move_line_up,
 
+    ['n'] = a_move_selection_forward,
+    ['N'] = a_move_selection_backward,
 
-    ['t'] = a_next_tab,
-    ['T'] = a_prev_tab,
-
+    ['.'] = a_next_tab,
+    [','] = a_prev_tab,
 
 };
 
@@ -112,93 +105,97 @@ action_fn fixed_actions[MAX_FIXED_ACTIONS] = {
     [INPUT_BACKSPACE] = a_backspace,
     [INPUT_DELETE] = a_delete,
 
-    [INPUT_UP] = a_up,
-    [INPUT_DOWN] = a_down,
-    [INPUT_LEFT] = a_left,
-    [INPUT_RIGHT] = a_right,
+    [INPUT_UP] = a_cursor_up,
+    [INPUT_DOWN] = a_cursor_down,
+    [INPUT_RIGHT] = a_cursor_forward,
+    [INPUT_LEFT] = a_cursor_backward,
 
     [INPUT_SHIFT_UP] = a_select_up,
     [INPUT_SHIFT_DOWN] = a_select_down,
-    [INPUT_SHIFT_LEFT] = a_select_left,
-    [INPUT_SHIFT_RIGHT] = a_select_right,
+    [INPUT_SHIFT_RIGHT] = a_select_forward,
+    [INPUT_SHIFT_LEFT] = a_select_backward,
 
-    [INPUT_ALT_UP] = a_paragraph_up,
-    [INPUT_ALT_DOWN] = a_paragraph_down,
-    [INPUT_ALT_LEFT] = a_line_begin,
-    [INPUT_ALT_RIGHT] = a_line_end,
+    [INPUT_ALT_UP] = a_cursor_up_paragraph,
+    [INPUT_ALT_DOWN] = a_cursor_down_paragraph,
+    [INPUT_ALT_LEFT] = a_cursor_line_begin,
+    [INPUT_ALT_RIGHT] = a_cursor_line_end,
 
-    [INPUT_SHIFT_ALT_UP] = a_select_paragraph_up,
-    [INPUT_SHIFT_ALT_DOWN] = a_select_paragraph_down,
+    [INPUT_SHIFT_ALT_UP] = a_select_up_paragraph,
+    [INPUT_SHIFT_ALT_DOWN] = a_select_down_paragraph,
     [INPUT_SHIFT_ALT_LEFT] = a_select_line_begin,
     [INPUT_SHIFT_ALT_RIGHT] = a_select_line_end,
 
     [INPUT_CTRL_UP] = a_move_line_up,
     [INPUT_CTRL_DOWN] = a_move_line_down,
-    [INPUT_CTRL_LEFT] = a_word_left,
-    [INPUT_CTRL_RIGHT] = a_word_right,
+
+
+    [INPUT_CTRL_RIGHT] = a_cursor_forward_word,
+    [INPUT_CTRL_LEFT] = a_cursor_backward_word,
 
     // [INPUT_SHIFT_CTRL_UP] = ,
     // [INPUT_SHIFT_CTRL_DOWN] = ,
-    [INPUT_SHIFT_CTRL_LEFT] = a_select_word_left,
-    [INPUT_SHIFT_CTRL_RIGHT] = a_select_word_right,
+    [INPUT_SHIFT_CTRL_RIGHT] = a_select_forward_word,
+    [INPUT_SHIFT_CTRL_LEFT] = a_select_backward_word,
 
-    [INPUT_HOME] = a_buffer_begin,
-    [INPUT_END] = a_select_buffer_end,
+    [INPUT_HOME] = a_cursor_buffer_begin,
+    [INPUT_END] = a_cursor_buffer_end,
 };
 
 
 // - Movement Actions - //
 
-void a_up (Editor* editor, Buffer* buffer, int32_t count) {
+void a_cursor_up (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_cursor_line(buffer, -count, false);
 }
-void a_down (Editor* editor, Buffer* buffer, int32_t count) {
+void a_cursor_down (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_cursor_line(buffer, count, false);
 }
-void a_left (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_cursor_char(buffer, -count, false);
-}
-void a_right (Editor* editor, Buffer* buffer, int32_t count) {
+void a_cursor_forward (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_cursor_char(buffer, count, false);
 }
-
-void a_word_left (Editor* editor, Buffer* buffer, int32_t count) {
-    int32_t lead = 1; // ...
-    buffer_cursor_word(buffer, lead, -count, false);
+void a_cursor_backward (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_cursor_char(buffer, -count, false);
 }
-void a_word_right (Editor* editor, Buffer* buffer, int32_t count) {
+
+void a_cursor_forward_word (Editor* editor, Buffer* buffer, int32_t count) {
     int32_t lead = 1; // ...
     buffer_cursor_word(buffer, lead, count, false);
 }
-
-void a_line_begin (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_cursor_line_begin(buffer, false);
-}
-void a_line_end (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_cursor_line_end(buffer, false);
+void a_cursor_backward_word (Editor* editor, Buffer* buffer, int32_t count) {
+    int32_t lead = 1; // ...
+    buffer_cursor_word(buffer, lead, -count, false);
 }
 
-void a_buffer_begin (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_cursor_home(buffer, false);
-}
-void a_buffer_end (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_cursor_end(buffer, false);
-}
-
-void a_paragraph_up (Editor* editor, Buffer* buffer, int32_t count) {
+void a_cursor_up_paragraph (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_cursor_paragraph(buffer, -count, false);
 }
-void a_paragraph_down (Editor* editor, Buffer* buffer, int32_t count) {
+void a_cursor_down_paragraph (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_cursor_paragraph(buffer, count, false);
 }
 
-void a_to_matching (Editor* editor, Buffer* buffer, int32_t count) {}
-void a_to_opening (Editor* editor, Buffer* buffer, int32_t count) {}
-void a_to_closing (Editor* editor, Buffer* buffer, int32_t count) {}
+void a_cursor_line_begin (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_cursor_line_begin(buffer, false);
+}
+void a_cursor_line_end (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_cursor_line_end(buffer, false);
+}
 
-void a_goto (Editor* editor, Buffer* buffer, int32_t count) {}
+void a_cursor_buffer_begin (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_cursor_home(buffer, false);
+}
+void a_cursor_buffer_end (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_cursor_end(buffer, false);
+}
+
 
 // - Selection Actions - //
+
+void a_select_forward (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_cursor_char(buffer, count, true);
+}
+void a_select_backward (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_cursor_char(buffer, -count, true);
+}
 
 void a_select_up (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_cursor_line(buffer, -count, true);
@@ -206,28 +203,23 @@ void a_select_up (Editor* editor, Buffer* buffer, int32_t count) {
 void a_select_down (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_cursor_line(buffer, count, true);
 }
-void a_select_left (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_cursor_char(buffer, -count, true);
-}
-void a_select_right (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_cursor_char(buffer, count, true);
-}
 
-void a_select_word (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_select_word(buffer);
-}
-void a_select_word_left (Editor* editor, Buffer* buffer, int32_t count) {
-    int32_t lead = 1; // ...
-    buffer_cursor_word(buffer, lead, -count, true);
-}
-void a_select_word_right (Editor* editor, Buffer* buffer, int32_t count) {
+void a_select_forward_word (Editor* editor, Buffer* buffer, int32_t count) {
     int32_t lead = 1; // ...
     buffer_cursor_word(buffer, lead, count, true);
 }
-
-void a_select_line (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_select_line(buffer);
+void a_select_backward_word (Editor* editor, Buffer* buffer, int32_t count) {
+    int32_t lead = 1; // ...
+    buffer_cursor_word(buffer, lead, -count, true);
 }
+
+void a_select_up_paragraph (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_cursor_paragraph(buffer, -count, true);
+}
+void a_select_down_paragraph (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_cursor_paragraph(buffer, count, true);
+}
+
 void a_select_line_begin (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_cursor_line_begin(buffer, true);
 }
@@ -235,9 +227,6 @@ void a_select_line_end (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_cursor_line_end(buffer, true);
 }
 
-void a_select_all (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_select_all(buffer);
-}
 void a_select_buffer_begin (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_cursor_home(buffer, true);
 }
@@ -245,20 +234,24 @@ void a_select_buffer_end (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_cursor_end(buffer, true);
 }
 
-void a_select_paragraph_up (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_cursor_paragraph(buffer, -count, true);
+void a_select_all (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_select_all(buffer);
 }
-void a_select_paragraph_down (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_cursor_paragraph(buffer, count, true);
+void a_select_line (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_select_line(buffer);
+}
+void a_select_word (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_select_word(buffer);
 }
 
-void a_select_to_matching (Editor* editor, Buffer* buffer, int32_t count) {}
-void a_select_to_opening (Editor* editor, Buffer* buffer, int32_t count) {}
-void a_select_to_closing (Editor* editor, Buffer* buffer, int32_t count) {}
-
-void a_select_swap (Editor* editor, Buffer* buffer, int32_t count) {
+void a_selection_swap (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_selection_swap(buffer);
 }
+
+void a_selection_duplicate (Editor* editor, Buffer* buffer, int32_t count) {
+    buffer_selection_duplicate(buffer, count);
+}
+
 
 // - Edit Actions - //
 
@@ -294,10 +287,6 @@ void a_backspace_lines (Editor* editor, Buffer* buffer, int32_t count) {
 
 void a_delete_trailing_whitespace (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_selection_delete_whitespace(buffer);
-}
-
-void a_duplicate (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_selection_duplicate(buffer, count);
 }
 
 void a_move_line_up (Editor* editor, Buffer* buffer, int32_t count) {

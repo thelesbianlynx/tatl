@@ -26,56 +26,62 @@ enum {
 
 // - Movement Actions - //
 
-void a_up (Editor* editor, Buffer* buffer, int32_t count);
-void a_down (Editor* editor, Buffer* buffer, int32_t count);
-void a_left (Editor* editor, Buffer* buffer, int32_t count);
-void a_right (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_up (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_down (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_forward (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_backward (Editor* editor, Buffer* buffer, int32_t count);
 
-void a_word_left (Editor* editor, Buffer* buffer, int32_t count);
-void a_word_right (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_forward_word (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_backward_word (Editor* editor, Buffer* buffer, int32_t count);
 
-void a_line_begin (Editor* editor, Buffer* buffer, int32_t count);
-void a_line_end (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_up_paragraph (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_down_paragraph (Editor* editor, Buffer* buffer, int32_t count);
 
-void a_buffer_begin (Editor* editor, Buffer* buffer, int32_t count);
-void a_buffer_end (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_line_begin (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_line_end (Editor* editor, Buffer* buffer, int32_t count);
 
-void a_paragraph_up (Editor* editor, Buffer* buffer, int32_t count);
-void a_paragraph_down (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_buffer_begin (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_buffer_end (Editor* editor, Buffer* buffer, int32_t count);
 
-void a_to_matching (Editor* editor, Buffer* buffer, int32_t count);
-void a_to_opening (Editor* editor, Buffer* buffer, int32_t count);
-void a_to_closing (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_to_matching (Editor* editor, Buffer* buffer, int32_t count);
 
-void a_goto (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_forward_to_opening (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_backward_to_opening (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_forward_to_closing (Editor* editor, Buffer* buffer, int32_t count);
+void a_cursor_backward_to_closing (Editor* editor, Buffer* buffer, int32_t count);
 
 // - Selection Actions - //
 
 void a_select_up (Editor* editor, Buffer* buffer, int32_t count);
 void a_select_down (Editor* editor, Buffer* buffer, int32_t count);
-void a_select_left (Editor* editor, Buffer* buffer, int32_t count);
-void a_select_right (Editor* editor, Buffer* buffer, int32_t count);
+void a_select_forward (Editor* editor, Buffer* buffer, int32_t count);
+void a_select_backward (Editor* editor, Buffer* buffer, int32_t count);
 
-void a_select_word (Editor* editor, Buffer* buffer, int32_t count);
-void a_select_word_left (Editor* editor, Buffer* buffer, int32_t count);
-void a_select_word_right (Editor* editor, Buffer* buffer, int32_t count);
+void a_select_forward_word (Editor* editor, Buffer* buffer, int32_t count);
+void a_select_backward_word (Editor* editor, Buffer* buffer, int32_t count);
 
-void a_select_line (Editor* editor, Buffer* buffer, int32_t count);
+void a_select_up_paragraph (Editor* editor, Buffer* buffer, int32_t count);
+void a_select_down_paragraph (Editor* editor, Buffer* buffer, int32_t count);
+
 void a_select_line_begin (Editor* editor, Buffer* buffer, int32_t count);
 void a_select_line_end (Editor* editor, Buffer* buffer, int32_t count);
 
-void a_select_all (Editor* editor, Buffer* buffer, int32_t count);
 void a_select_buffer_begin (Editor* editor, Buffer* buffer, int32_t count);
 void a_select_buffer_end (Editor* editor, Buffer* buffer, int32_t count);
 
-void a_select_paragraph_up (Editor* editor, Buffer* buffer, int32_t count);
-void a_select_paragraph_down (Editor* editor, Buffer* buffer, int32_t count);
-
 void a_select_to_matching (Editor* editor, Buffer* buffer, int32_t count);
-void a_select_to_opening (Editor* editor, Buffer* buffer, int32_t count);
-void a_select_to_closing (Editor* editor, Buffer* buffer, int32_t count);
 
-void a_select_swap (Editor* editor, Buffer* buffer, int32_t count);
+void a_select_forward_to_opening (Editor* editor, Buffer* buffer, int32_t count);
+void a_select_backward_to_opening (Editor* editor, Buffer* buffer, int32_t count);
+void a_select_forward_to_closing (Editor* editor, Buffer* buffer, int32_t count);
+void a_select_backward_to_closing (Editor* editor, Buffer* buffer, int32_t count);
+
+void a_select_all (Editor* editor, Buffer* buffer, int32_t count);
+void a_select_word (Editor* editor, Buffer* buffer, int32_t count);
+void a_select_line (Editor* editor, Buffer* buffer, int32_t count);
+
+void a_selection_swap (Editor* editor, Buffer* buffer, int32_t count);
+void a_selection_duplicate (Editor* editor, Buffer* buffer, int32_t count);
 
 // - Edit Actions - //
 
@@ -91,10 +97,7 @@ void a_backspace (Editor* editor, Buffer* buffer, int32_t count);
 void a_delete_lines (Editor* editor, Buffer* buffer, int32_t count);
 void a_backspace_lines (Editor* editor, Buffer* buffer, int32_t count);
 
-
 void a_delete_trailing_whitespace (Editor* editor, Buffer* buffer, int32_t count);
-
-void a_duplicate (Editor* editor, Buffer* buffer, int32_t count);
 
 void a_move_line_up (Editor* editor, Buffer* buffer, int32_t count);
 void a_move_line_down (Editor* editor, Buffer* buffer, int32_t count);
