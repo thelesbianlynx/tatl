@@ -85,7 +85,7 @@ bool mod_shift (uint32_t mods) {
 
 static
 bool mod_alt (uint32_t mods) {
-    return mods == 3 || mods == 4;
+    return mods == 3 || mods == 4 || mods == 7 || mods == 8;
 }
 
 static
@@ -180,6 +180,51 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
                 return false;
             }
 
+            if (mod_ctrl(mods)) {
+                if (mod_shift(mods)) {
+                    if (c == 'A') {
+                        event->type = INPUT_SHIFT_CTRL_UP;
+                    } else if (c == 'B') {
+                        event->type = INPUT_SHIFT_CTRL_DOWN;
+                    } else if (c == 'D') {
+                        event->type = INPUT_SHIFT_CTRL_LEFT;
+                    } else if (c == 'C') {
+                        event->type = INPUT_SHIFT_CTRL_RIGHT;
+                    } else {
+                        return false;
+                    }
+                    return true;
+                }
+
+                if (mod_alt(mods)) {
+                    if (c == 'A') {
+                        event->type = INPUT_CTRL_ALT_UP;
+                    } else if (c == 'B') {
+                        event->type = INPUT_CTRL_ALT_DOWN;
+                    } else if (c == 'D') {
+                        event->type = INPUT_CTRL_ALT_LEFT;
+                    } else if (c == 'C') {
+                        event->type = INPUT_CTRL_ALT_RIGHT;
+                    } else {
+                        return false;
+                    }
+                    return true;
+                }
+
+                if (c == 'A') {
+                    event->type = INPUT_CTRL_UP;
+                } else if (c == 'B') {
+                    event->type = INPUT_CTRL_DOWN;
+                } else if (c == 'D') {
+                    event->type = INPUT_CTRL_LEFT;
+                } else if (c == 'C') {
+                    event->type = INPUT_CTRL_RIGHT;
+                } else {
+                    return false;
+                }
+                return true;
+            }
+
             if (mod_alt(mods)) {
                 if (mod_shift(mods)) {
                     if (c == 'A') {
@@ -204,36 +249,6 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
                     event->type = INPUT_ALT_LEFT;
                 } else if (c == 'C') {
                     event->type = INPUT_ALT_RIGHT;
-                } else {
-                    return false;
-                }
-                return true;
-            }
-
-            if (mod_ctrl(mods)) {
-                if (mod_shift(mods)) {
-                    if (c == 'A') {
-                        event->type = INPUT_SHIFT_CTRL_UP;
-                    } else if (c == 'B') {
-                        event->type = INPUT_SHIFT_CTRL_DOWN;
-                    } else if (c == 'D') {
-                        event->type = INPUT_SHIFT_CTRL_LEFT;
-                    } else if (c == 'C') {
-                        event->type = INPUT_SHIFT_CTRL_RIGHT;
-                    } else {
-                        return false;
-                    }
-                    return true;
-                }
-
-                if (c == 'A') {
-                    event->type = INPUT_CTRL_UP;
-                } else if (c == 'B') {
-                    event->type = INPUT_CTRL_DOWN;
-                } else if (c == 'D') {
-                    event->type = INPUT_CTRL_LEFT;
-                } else if (c == 'C') {
-                    event->type = INPUT_CTRL_RIGHT;
                 } else {
                     return false;
                 }

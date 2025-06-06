@@ -81,6 +81,8 @@ void buffer_edit_backspace (Buffer* buffer, int32_t i);
 
 void buffer_edit_move_line (Buffer* buffer, int32_t i);
 
+void buffer_edit_move_selection (Buffer* buffer, int32_t i);
+
 
 void buffer_cursor_goto (Buffer* buffer, int32_t row, int32_t col, bool sel);
 
@@ -103,9 +105,9 @@ void buffer_cursor_line_end (Buffer* buffer, bool sel);
 
 void buffer_select_all (Buffer* buffer);
 
-void buffer_select_word (Buffer* buffer);
-
 void buffer_select_line (Buffer* buffer);
+
+void buffer_select_word (Buffer* buffer);
 
 
 bool buffer_selection_exist (Buffer* buffer);

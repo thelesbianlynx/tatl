@@ -57,10 +57,10 @@ action_fn actions[MAX_ACTIONS] = {
     ['P'] = a_select_forward_word,
     ['O'] = a_select_backward_word,
 
-    ['u'] = a_cursor_up_paragraph,
+    ['y'] = a_cursor_up_paragraph,
     ['h'] = a_cursor_down_paragraph,
 
-    ['U'] = a_select_up_paragraph,
+    ['Y'] = a_select_up_paragraph,
     ['H'] = a_select_down_paragraph,
 
     ['a'] = a_cursor_line_begin,
@@ -80,10 +80,6 @@ action_fn actions[MAX_ACTIONS] = {
 
     ['b'] = a_backspace,
     ['B'] = a_backspace_lines,
-
-    [' '] = a_space,
-    ['y'] = a_indent,
-    ['Y'] = a_unindent,
 
     ['m'] = a_move_line_down,
     ['M'] = a_move_line_up,
@@ -115,27 +111,31 @@ action_fn fixed_actions[MAX_FIXED_ACTIONS] = {
     [INPUT_SHIFT_RIGHT] = a_select_forward,
     [INPUT_SHIFT_LEFT] = a_select_backward,
 
-    [INPUT_ALT_UP] = a_cursor_up_paragraph,
-    [INPUT_ALT_DOWN] = a_cursor_down_paragraph,
-    [INPUT_ALT_LEFT] = a_cursor_line_begin,
-    [INPUT_ALT_RIGHT] = a_cursor_line_end,
-
-    [INPUT_SHIFT_ALT_UP] = a_select_up_paragraph,
-    [INPUT_SHIFT_ALT_DOWN] = a_select_down_paragraph,
-    [INPUT_SHIFT_ALT_LEFT] = a_select_line_begin,
-    [INPUT_SHIFT_ALT_RIGHT] = a_select_line_end,
-
-    [INPUT_CTRL_UP] = a_move_line_up,
-    [INPUT_CTRL_DOWN] = a_move_line_down,
-
-
     [INPUT_CTRL_RIGHT] = a_cursor_forward_word,
     [INPUT_CTRL_LEFT] = a_cursor_backward_word,
 
-    // [INPUT_SHIFT_CTRL_UP] = ,
-    // [INPUT_SHIFT_CTRL_DOWN] = ,
     [INPUT_SHIFT_CTRL_RIGHT] = a_select_forward_word,
     [INPUT_SHIFT_CTRL_LEFT] = a_select_backward_word,
+
+    [INPUT_ALT_UP] = a_cursor_up_paragraph,
+    [INPUT_ALT_DOWN] = a_cursor_down_paragraph,
+
+    [INPUT_SHIFT_ALT_UP] = a_select_up_paragraph,
+    [INPUT_SHIFT_ALT_DOWN] = a_select_down_paragraph,
+
+    [INPUT_ALT_LEFT] = a_cursor_line_begin,
+    [INPUT_ALT_RIGHT] = a_cursor_line_end,
+
+    [INPUT_SHIFT_ALT_LEFT] = a_select_line_begin,
+    [INPUT_SHIFT_ALT_RIGHT] = a_select_line_end,
+
+    [INPUT_CTRL_ALT_UP] = a_move_line_up,
+    [INPUT_CTRL_ALT_DOWN] = a_move_line_down,
+    [INPUT_CTRL_ALT_RIGHT] = a_move_selection_forward,
+    [INPUT_CTRL_ALT_LEFT] = a_move_selection_backward,
+
+    [INPUT_CTRL_UP] = a_move_line_up,
+    [INPUT_CTRL_DOWN] = a_move_line_down,
 
     [INPUT_HOME] = a_cursor_buffer_begin,
     [INPUT_END] = a_cursor_buffer_end,
@@ -297,10 +297,10 @@ void a_move_line_down (Editor* editor, Buffer* buffer, int32_t count) {
 }
 
 void a_move_selection_forward (Editor* editor, Buffer* buffer, int32_t count) {
-
+    buffer_edit_move_selection(buffer, count);
 }
 void a_move_selection_backward (Editor* editor, Buffer* buffer, int32_t count) {
-
+    buffer_edit_move_selection(buffer, -count);
 }
 
 // - Buffer Actions - //

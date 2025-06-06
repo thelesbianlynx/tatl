@@ -620,6 +620,64 @@ void buffer_edit_move_line (Buffer* buffer, int32_t i) {
     buffer->modified = true;
 }
 
+void buffer_edit_move_selection (Buffer* buffer, int32_t i) {
+    Point begin = buffer->cursor, end = buffer->selection;
+    CharBuffer* dst = charbuffer_create();
+    bool sel = true;
+    bool swap = false;
+
+    if (begin.line == end.line) {
+        if (begin.col == end.col){
+            sel = false;
+            CharBuffer* line = buffer->lines->data[begin.line];
+            if (begin.col < line->size) {
+                charbuffer_achar(dst, line->buffer[begin.col]);
+            }
+        } else {
+            if (begin.col > end.col) {
+                begin = buffer->selection;
+                end = buffer->cursor;
+                swap = true;
+            }
+            CharBuffer* line = buffer->lines->data[begin.line];
+            charbuffer_get_substr(line, dst, begin.col, end.col);
+        }
+    } else {
+        if (begin.line > end.line) {
+            begin = buffer->selection;
+            end = buffer->cursor;
+            swap = true;
+        }
+
+        CharBuffer* line_begin = buffer->lines->data[begin.line];
+        charbuffer_get_suffix(line_begin, dst, begin.col);
+
+        for (int i = begin.line + 1; i < end.line; i++) {
+            CharBuffer* line = buffer->lines->data[i];
+            charbuffer_achar(dst, '\n');
+            charbuffer_achars(dst, line);
+        }
+
+        CharBuffer* line_end = buffer->lines->data[end.line];
+        charbuffer_achar(dst, '\n');
+        charbuffer_get_prefix(line_end, dst, end.col);
+    }
+
+    buffer_edit_delete(buffer, 1);
+    buffer_cursor_char(buffer, i, false);
+    Point a = buffer->cursor;
+    buffer_edit_text(buffer, dst, 1);
+    Point b = buffer->cursor;
+    buffer_cursor_goto(buffer, a.line, a.col, false);
+    if (sel) {
+        buffer_cursor_goto(buffer, b.line, b.col, true);
+        if (swap) buffer_selection_swap(buffer);
+    }
+
+    buffer->modified = true;
+    charbuffer_destroy(dst);
+}
+
 
 
 void buffer_cursor_goto (Buffer* buffer, int32_t row, int32_t col, bool sel) {
@@ -955,7 +1013,49 @@ void buffer_selection_cut (Buffer* buffer, CharBuffer* dst) {
 }
 
 void buffer_selection_duplicate (Buffer* buffer, int32_t i) {
+    Point begin = buffer->cursor, end = buffer->selection;
+    CharBuffer* dst = charbuffer_create();
+    bool swap = false;
 
+    if (begin.line == end.line) {
+        if (begin.col > end.col) {
+            begin = buffer->selection;
+            end = buffer->cursor;
+            swap = true;
+        }
+        CharBuffer* line = buffer->lines->data[begin.line];
+        charbuffer_get_substr(line, dst, begin.col, end.col);
+    } else {
+        if (begin.line > end.line) {
+            begin = buffer->selection;
+            end = buffer->cursor;
+            swap = true;
+        }
+
+        CharBuffer* line_begin = buffer->lines->data[begin.line];
+        charbuffer_get_suffix(line_begin, dst, begin.col);
+
+        for (int i = begin.line + 1; i < end.line; i++) {
+            CharBuffer* line = buffer->lines->data[i];
+            charbuffer_achar(dst, '\n');
+            charbuffer_achars(dst, line);
+        }
+
+        CharBuffer* line_end = buffer->lines->data[end.line];
+        charbuffer_achar(dst, '\n');
+        charbuffer_get_prefix(line_end, dst, end.col);
+    }
+
+    buffer_cursor_goto(buffer, end.line, end.col, false);
+    buffer_edit_text(buffer, dst, i);
+
+    Point c = buffer->cursor;
+    buffer_cursor_goto(buffer, end.line, end.col, false);
+    buffer_cursor_goto(buffer, c.line, c.col, true);
+    if (swap) buffer_selection_swap(buffer);
+
+    buffer->modified = true;
+    charbuffer_destroy(dst);
 }
 
 void buffer_selection_delete_whitespace (Buffer* buffer) {
