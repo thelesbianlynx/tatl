@@ -3,6 +3,8 @@
 #include <poll.h>
 #include <unistd.h>
 
+static bool first_run = true;
+
 static
 void parseCSI (const char* buffer, int n, char* ch, uint32_t* keycode, uint32_t* mods, uint32_t* button) {
     char b1[n];
@@ -94,6 +96,11 @@ bool mod_ctrl (uint32_t mods) {
 }
 
 bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
+    if (first_run) {
+        first_run = false;
+        return false;
+    }
+
     struct pollfd pollfd = { .fd = 0, .events = POLLIN };
     int status = poll(&pollfd, 1, 1000);
     if (status > 0) {

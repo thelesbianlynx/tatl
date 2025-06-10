@@ -582,6 +582,22 @@ void buffer_edit_backspace (Buffer* buffer, int32_t i) {
     update_scroll(buffer);
 }
 
+void buffer_edit_delete_lines (Buffer* buffer, int32_t i) {
+    if (buffer->alt_mode) return;
+    while (i-- > 0) {
+        buffer_select_line(buffer);
+        buffer_edit_delete(buffer, buffer_selection_exist(buffer) ? 2 : 1);
+    }
+}
+
+void buffer_edit_backspace_lines (Buffer* buffer, int32_t i) {
+    if (buffer->alt_mode) return;
+    while (i-- > 0) {
+        buffer_edit_delete_lines(buffer, 1);
+        buffer_cursor_line(buffer, -1, false);
+    }
+}
+
 void buffer_edit_move_line (Buffer* buffer, int32_t i) {
     if (buffer->alt_mode) return;
     if (i < 0) {

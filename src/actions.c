@@ -23,6 +23,9 @@ action_fn actions[MAX_ACTIONS] = {
     [CTRL('W')] = a_close,
 
     [CTRL('A')] = a_select_all,
+    [CTRL('L')] = a_select_line,
+    [CTRL('B')] = a_select_word,
+
     [CTRL('I')] = a_tab,
     [CTRL('M')] = a_newline,
 
@@ -69,8 +72,8 @@ action_fn actions[MAX_ACTIONS] = {
     ['A'] = a_select_line_begin,
     ['Z'] = a_select_line_end,
 
-    ['w'] = a_select_word,
-    ['e'] = a_select_line,
+    // ['w'] = a_select_word,
+    // ['e'] = a_select_line,
 
     ['s'] = a_selection_swap,
     ['S'] = a_selection_duplicate,
@@ -283,10 +286,10 @@ void a_backspace (Editor* editor, Buffer* buffer, int32_t count) {
     buffer_edit_backspace(buffer, count);
 }
 void a_delete_lines (Editor* editor, Buffer* buffer, int32_t count) {
-
+    buffer_edit_delete_lines(buffer, count);
 }
 void a_backspace_lines (Editor* editor, Buffer* buffer, int32_t count) {
-
+    buffer_edit_backspace_lines(buffer, count);
 }
 
 void a_delete_trailing_whitespace (Editor* editor, Buffer* buffer, int32_t count) {

@@ -79,6 +79,10 @@ void buffer_edit_delete (Buffer* buffer, int32_t i);
 
 void buffer_edit_backspace (Buffer* buffer, int32_t i);
 
+void buffer_edit_delete_lines (Buffer* buffer, int32_t i);
+
+void buffer_edit_backspace_lines (Buffer* buffer, int32_t i);
+
 void buffer_edit_move_line (Buffer* buffer, int32_t i);
 
 void buffer_edit_move_selection (Buffer* buffer, int32_t i);
