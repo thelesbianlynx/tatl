@@ -167,10 +167,12 @@ void a_cursor_backward_word (Editor* editor, Buffer* buffer, int32_t count) {
 }
 
 void a_cursor_up_paragraph (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_cursor_paragraph(buffer, -count, false);
+    int32_t lead = 1; // ...
+    buffer_cursor_paragraph(buffer, lead, -count, false);
 }
 void a_cursor_down_paragraph (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_cursor_paragraph(buffer, count, false);
+    int32_t lead = 1; // ...
+    buffer_cursor_paragraph(buffer, lead, count, false);
 }
 
 void a_cursor_line_begin (Editor* editor, Buffer* buffer, int32_t count) {
@@ -214,10 +216,12 @@ void a_select_backward_word (Editor* editor, Buffer* buffer, int32_t count) {
 }
 
 void a_select_up_paragraph (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_cursor_paragraph(buffer, -count, true);
+    int32_t lead = 1; // ...
+    buffer_cursor_paragraph(buffer, lead, -count, true);
 }
 void a_select_down_paragraph (Editor* editor, Buffer* buffer, int32_t count) {
-    buffer_cursor_paragraph(buffer, count, true);
+    int32_t lead = 1; // ...
+    buffer_cursor_paragraph(buffer, lead, count, true);
 }
 
 void a_select_line_begin (Editor* editor, Buffer* buffer, int32_t count) {

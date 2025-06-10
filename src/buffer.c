@@ -824,9 +824,40 @@ void buffer_cursor_word (Buffer* buffer, int32_t lead, int32_t i, bool sel) {
     }
 }
 
-void buffer_cursor_paragraph (Buffer* buffer, int32_t i, bool sel) {
+static
+int32_t line_ws (CharBuffer* line) {
+    for (int i = 0; i < line->size; i++) {
+        if (chartype(line->buffer[i]) != 0) return 1;
+    }
+    return 0;
+}
+
+void buffer_cursor_paragraph (Buffer* buffer, int32_t lead, int32_t i, bool sel) {
     if (buffer->alt_mode) return;
 
+    int d = i > 0 ? 1 : -1;
+    if (i < 0) i = -i;
+
+    while (i-- > 0) {
+        // Leading Move.
+        buffer_cursor_line(buffer, d * lead, true);
+
+        CharBuffer* line = buffer->lines->data[buffer->cursor.line];
+        int32_t ws = line_ws(line);
+        for (;;) {
+            int lineno = buffer->cursor.line;
+
+            buffer_cursor_line(buffer, d, true);
+            if (buffer->cursor.line == lineno) break;
+
+            line = buffer->lines->data[buffer->cursor.line];
+            if (ws != line_ws(line)) break;
+        }
+    }
+
+    if (!sel) {
+        buffer->selection = buffer->cursor;
+    }
 }
 
 void buffer_cursor_home (Buffer* buffer, bool sel) {
