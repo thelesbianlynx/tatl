@@ -38,7 +38,9 @@ struct buffer {
     bool should_close;
 
     // Undo/Redo Stack.
-    // ...
+    UStack* ustack;
+    Point pre_cursor;
+    uint32_t pre_commit_type;
 
     // Buffer-Specific Clipboard(s).
     // ...

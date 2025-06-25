@@ -23,6 +23,8 @@ typedef struct box Box;
 typedef struct point Point;
 typedef struct buffer Buffer;
 
+typedef struct ustack UStack;
+
 typedef struct array Array;
 typedef struct charbuffer CharBuffer;
 

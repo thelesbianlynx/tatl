@@ -8,7 +8,7 @@ struct charbuffer {
 
     char* buffer;
 
-    // Metadata for damage tracking.
+    // Metadata for undo/redo.
     bool damage;
     int32_t lineno;
 };

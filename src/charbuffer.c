@@ -25,6 +25,7 @@ void charbuffer_destroy (CharBuffer* cb) {
 void charbuffer_clear (CharBuffer* cb) {
     cb->size = 0;
     memset(cb->buffer, 0, cb->capacity);
+    cb->damage = true;
 }
 
 // Expand Char Buffer.

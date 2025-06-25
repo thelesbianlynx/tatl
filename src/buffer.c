@@ -4,11 +4,14 @@
 #include "charbuffer.h"
 #include "editor.h"
 #include "output.h"
+#include "ustack.h"
 
 static int32_t cursor_fake_col (Buffer* buffer, CharBuffer* line, int32_t real_col);
 static int32_t cursor_real_col (Buffer* buffer, CharBuffer* line, int32_t fake_col);
 static void update_mem (Buffer* buffer);
 static void update_scroll (Buffer* buffer);
+static void pre_commit (Buffer* buffer, uint32_t type);
+static void commit (Buffer* buffer);
 
 Buffer* buffer_create (Editor* editor, const char* title) {
     Buffer* buffer = malloc(sizeof(Buffer));
@@ -43,6 +46,11 @@ Buffer* buffer_create (Editor* editor, const char* title) {
 
     buffer->should_close = false;
 
+    buffer->ustack = ustack_create();
+    buffer->pre_commit_type = 0;
+    pre_commit(buffer, 0);
+    commit(buffer);
+
     return buffer;
 }
 
@@ -64,8 +72,8 @@ void buffer_destroy (Buffer* buffer) {
         charbuffer_destroy(buffer->lines->data[i]);
     }
     array_destroy(buffer->lines);
-    free(buffer->title);
-    free(buffer->filename);
+    charbuffer_destroy(buffer->title);
+    charbuffer_destroy(buffer->filename);
     free(buffer);
 }
 
@@ -98,6 +106,10 @@ void buffer_load (Buffer* buffer, const char* filename) {
     charbuffer_astr(buffer->title, filename + last_separator(filename));
     charbuffer_astr(buffer->filename, filename);
     buffer_cursor_goto(buffer, 0, 0, false);
+    ustack_clear(buffer->ustack);
+    buffer->pre_commit_type = 0;
+    pre_commit(buffer, 0);
+    commit(buffer);
     buffer->modified = false;
 }
 
@@ -349,6 +361,25 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
         output_civis();
     }
 }
+
+
+static
+void pre_commit (Buffer* buffer, uint32_t type) {
+    if (type != buffer->pre_commit_type && buffer->pre_commit_type != 0) {
+        commit (buffer);
+        buffer->pre_cursor = buffer->cursor;
+    } else if (type == 0) {
+        buffer->pre_cursor = buffer->cursor;
+    }
+    buffer->pre_commit_type = type;
+}
+
+static
+void commit (Buffer* buffer) {
+    ustack_push(buffer->ustack, buffer->lines, &buffer->pre_cursor, &buffer->cursor);
+    buffer->pre_commit_type = 0;
+}
+
 
 static
 bool delete_selection (Buffer* buffer) {
@@ -1121,13 +1152,15 @@ void buffer_get_contents (Buffer* buffer, CharBuffer* dst) {
 
 
 void buffer_undo (Buffer* buffer, int32_t i) {
-
-
+    Point p;
+    ustack_undo(buffer->ustack, buffer->lines, &p);
+    buffer_cursor_goto(buffer, p.line, p.col, false);
 }
 
 void buffer_redo (Buffer* buffer, int32_t i) {
-
-
+    Point p;
+    ustack_undo(buffer->ustack, buffer->lines, &p);
+    buffer_cursor_goto(buffer, p.line, p.col, false);
 }
 
 
