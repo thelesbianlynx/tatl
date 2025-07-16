@@ -48,6 +48,7 @@ Buffer* buffer_create (Editor* editor, const char* title) {
 
     buffer->ustack = ustack_create();
     buffer->pre_commit_type = 0;
+    buffer->commit_level = 0;
     pre_commit(buffer, 0);
     commit(buffer);
 
@@ -365,6 +366,7 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
 
 static
 void pre_commit (Buffer* buffer, uint32_t type) {
+    if (buffer->commit_level > 0) return;
     if (type != buffer->pre_commit_type && buffer->pre_commit_type != 0) {
         commit (buffer);
         buffer->pre_cursor = buffer->cursor;
@@ -376,6 +378,7 @@ void pre_commit (Buffer* buffer, uint32_t type) {
 
 static
 void commit (Buffer* buffer) {
+    if (buffer->commit_level > 0) return;
     ustack_push(buffer->ustack, buffer->lines, &buffer->pre_cursor, &buffer->cursor);
     buffer->pre_commit_type = 0;
 }
@@ -392,16 +395,20 @@ bool delete_selection (Buffer* buffer) {
             begin = buffer->selection;
             end = buffer->cursor;
         }
+        pre_commit(buffer, 0);
         CharBuffer* line = buffer->lines->data[begin.line];
         charbuffer_rm_substr(line, begin.col, end.col);
         buffer->cursor = buffer->selection = begin;
         update_mem(buffer);
+        commit(buffer);
+        buffer->modified = true;
         return true;
     } else if (begin.line > end.line) {
         begin = buffer->selection;
         end = buffer->cursor;
     }
 
+    pre_commit(buffer, 0);
     CharBuffer* line_begin = buffer->lines->data[begin.line];
     charbuffer_rm_suffix(line_begin, begin.col);
 
@@ -418,6 +425,7 @@ bool delete_selection (Buffer* buffer) {
     buffer->cursor = buffer->selection = begin;
     update_mem(buffer);
     update_scroll(buffer);
+    commit(buffer);
     buffer->modified = true;
     return true;
 }
@@ -425,6 +433,7 @@ bool delete_selection (Buffer* buffer) {
 
 void buffer_edit_char (Buffer* buffer, uint32_t ch, int32_t i) {
     delete_selection(buffer);
+    pre_commit(buffer, 1);
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         charbuffer_ichar(line, (char) ch, buffer->cursor.col);
@@ -439,6 +448,8 @@ void buffer_edit_char (Buffer* buffer, uint32_t ch, int32_t i) {
 
 void buffer_edit_text (Buffer* buffer, CharBuffer* text, int32_t i) {
     delete_selection(buffer);
+    pre_commit(buffer, 0);
+    buffer->commit_level++;
     while (i-- > 0) {
         for (int j = 0; j < text->size; j++) {
             uint32_t ch = text->buffer[j];
@@ -449,6 +460,8 @@ void buffer_edit_text (Buffer* buffer, CharBuffer* text, int32_t i) {
             }
         }
     }
+    buffer->commit_level--;
+    commit(buffer);
 }
 
 void buffer_edit_line (Buffer* buffer, int32_t i) {
@@ -457,6 +470,7 @@ void buffer_edit_line (Buffer* buffer, int32_t i) {
         return;
     }
     delete_selection(buffer);
+    pre_commit(buffer, 2);
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         CharBuffer* newline = charbuffer_create();
@@ -494,6 +508,7 @@ void buffer_edit_tab (Buffer* buffer, int32_t i) {
 
 void buffer_edit_indent (Buffer* buffer, int32_t i) {
     if (buffer->alt_mode) return;
+    pre_commit(buffer, 32);
     Point begin = buffer->cursor, end = buffer->selection;
     if (begin.line > end.line) {
         begin = buffer->selection;
@@ -569,6 +584,8 @@ void buffer_edit_indent (Buffer* buffer, int32_t i) {
 
 void buffer_edit_delete (Buffer* buffer, int32_t i) {
     if (i > 0 && delete_selection(buffer)) i--;
+    if (i <= 0) return;
+    pre_commit(buffer, 3);
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         if (buffer->cursor.col >= line->size) {
@@ -589,6 +606,8 @@ void buffer_edit_delete (Buffer* buffer, int32_t i) {
 
 void buffer_edit_backspace (Buffer* buffer, int32_t i) {
     if (i > 0 && delete_selection(buffer)) i--;
+    if (i <= 0) return;
+    pre_commit(buffer, 3);
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         if (buffer->cursor.col <= 0) {
@@ -631,6 +650,7 @@ void buffer_edit_backspace_lines (Buffer* buffer, int32_t i) {
 
 void buffer_edit_move_line (Buffer* buffer, int32_t i) {
     if (buffer->alt_mode) return;
+    pre_commit(buffer, 64);
     if (i < 0) {
         i = -i;
         while (i-- > 0) {
@@ -668,6 +688,7 @@ void buffer_edit_move_line (Buffer* buffer, int32_t i) {
 }
 
 void buffer_edit_move_selection (Buffer* buffer, int32_t i) {
+    pre_commit(buffer, 65);
     Point begin = buffer->cursor, end = buffer->selection;
     CharBuffer* dst = charbuffer_create();
     bool sel = true;
@@ -728,6 +749,7 @@ void buffer_edit_move_selection (Buffer* buffer, int32_t i) {
 
 
 void buffer_cursor_goto (Buffer* buffer, int32_t row, int32_t col, bool sel) {
+    pre_commit(buffer, 0);
     if (row >= buffer->lines->size) row = buffer->lines->size - 1;
     if (buffer->alt_mode) row = 0;
 
@@ -751,6 +773,7 @@ void buffer_cursor_line (Buffer* buffer, int32_t i, bool sel) {
         if (i < 0) editor_altbuffer_down(buffer->editor);
         return;
     }
+    pre_commit(buffer, 0);
     buffer->cursor.line += i;
     if (buffer->cursor.line <= 0) buffer->cursor.line = 0;
     if (buffer->cursor.line >= buffer->lines->size) buffer->cursor.line = buffer->lines->size - 1;
@@ -767,6 +790,7 @@ void buffer_cursor_line (Buffer* buffer, int32_t i, bool sel) {
 }
 
 void buffer_cursor_char (Buffer* buffer, int32_t i, bool sel) {
+    pre_commit(buffer, 0);
     int d = i > 0 ? 1 : -1;
     if (i < 0) i *= -1;
 
@@ -817,6 +841,7 @@ uint32_t chartype (char ch) {
 }
 
 void buffer_cursor_word (Buffer* buffer, int32_t lead, int32_t i, bool sel) {
+    pre_commit(buffer, 0);
     int d = i > 0 ? 1 : -1;
     if (i < 0) i *= -1;
 
@@ -881,6 +906,7 @@ int32_t line_ws (CharBuffer* line) {
 
 void buffer_cursor_paragraph (Buffer* buffer, int32_t lead, int32_t i, bool sel) {
     if (buffer->alt_mode) return;
+    pre_commit(buffer, 0);
 
     int d = i > 0 ? 1 : -1;
     if (i < 0) i = -i;
@@ -908,6 +934,7 @@ void buffer_cursor_paragraph (Buffer* buffer, int32_t lead, int32_t i, bool sel)
 }
 
 void buffer_cursor_home (Buffer* buffer, bool sel) {
+    pre_commit(buffer, 0);
     buffer->cursor.line = 0;
     buffer->cursor.col = 0;
 
@@ -920,6 +947,7 @@ void buffer_cursor_home (Buffer* buffer, bool sel) {
 }
 
 void buffer_cursor_end (Buffer* buffer, bool sel) {
+    pre_commit(buffer, 0);
     buffer->cursor.line = buffer->lines->size - 1;
     CharBuffer* line = buffer->lines->data[buffer->cursor.line];
     buffer->cursor.col = line->size;
@@ -933,6 +961,7 @@ void buffer_cursor_end (Buffer* buffer, bool sel) {
 }
 
 void buffer_cursor_line_begin (Buffer* buffer, bool sel) {
+    pre_commit(buffer, 0);
     buffer->cursor.col = 0;
 
     update_mem(buffer);
@@ -944,6 +973,7 @@ void buffer_cursor_line_begin (Buffer* buffer, bool sel) {
 }
 
 void buffer_cursor_line_end (Buffer* buffer, bool sel) {
+    pre_commit(buffer, 0);
     CharBuffer* line = buffer->lines->data[buffer->cursor.line];
     buffer->cursor.col = line->size;
 
@@ -966,6 +996,7 @@ void buffer_select_all (Buffer* buffer) {
 }
 
 void buffer_select_word (Buffer* buffer) {
+    pre_commit(buffer, 0);
     if (buffer_selection_exist(buffer)) {
         buffer_selection_clear(buffer);
         return;
@@ -997,6 +1028,7 @@ void buffer_select_word (Buffer* buffer) {
 }
 
 void buffer_select_line (Buffer* buffer) {
+    pre_commit(buffer, 0);
     if (buffer->cursor.line == buffer->selection.line) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         if (buffer->cursor.col >= buffer->selection.col) {
@@ -1045,16 +1077,19 @@ bool buffer_selection_exist (Buffer* buffer) {
 }
 
 void buffer_selection_swap (Buffer* buffer) {
+    pre_commit(buffer, 0);
     Point tmp = buffer->cursor;
     buffer->cursor = buffer->selection;
     buffer->selection = tmp;
 }
 
 void buffer_selection_clear (Buffer* buffer) {
+    pre_commit(buffer, 0);
     buffer->selection = buffer->cursor;
 }
 
 void buffer_selection_copy (Buffer* buffer, CharBuffer* dst) {
+    pre_commit(buffer, 0);
     Point begin = buffer->cursor, end = buffer->selection;
 
     if (begin.line == end.line) {
@@ -1091,6 +1126,8 @@ void buffer_selection_cut (Buffer* buffer, CharBuffer* dst) {
 }
 
 void buffer_selection_duplicate (Buffer* buffer, int32_t i) {
+    pre_commit(buffer, 0);
+    buffer->commit_level++;
     Point begin = buffer->cursor, end = buffer->selection;
     CharBuffer* dst = charbuffer_create();
     bool swap = false;
@@ -1132,6 +1169,8 @@ void buffer_selection_duplicate (Buffer* buffer, int32_t i) {
     buffer_cursor_goto(buffer, c.line, c.col, true);
     if (swap) buffer_selection_swap(buffer);
 
+    buffer->commit_level--;
+    commit(buffer);
     buffer->modified = true;
     charbuffer_destroy(dst);
 }
@@ -1152,14 +1191,18 @@ void buffer_get_contents (Buffer* buffer, CharBuffer* dst) {
 
 
 void buffer_undo (Buffer* buffer, int32_t i) {
+    pre_commit(buffer, 0);
+
     Point p;
     ustack_undo(buffer->ustack, buffer->lines, &p);
     buffer_cursor_goto(buffer, p.line, p.col, false);
 }
 
 void buffer_redo (Buffer* buffer, int32_t i) {
+    pre_commit(buffer, 0);
+
     Point p;
-    ustack_undo(buffer->ustack, buffer->lines, &p);
+    ustack_redo(buffer->ustack, buffer->lines, &p);
     buffer_cursor_goto(buffer, p.line, p.col, false);
 }
 

@@ -41,6 +41,7 @@ struct buffer {
     UStack* ustack;
     Point pre_cursor;
     uint32_t pre_commit_type;
+    uint32_t commit_level;
 
     // Buffer-Specific Clipboard(s).
     // ...

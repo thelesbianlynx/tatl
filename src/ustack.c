@@ -107,7 +107,7 @@ void ustack_clear (UStack* ustack) {
 void ustack_push (UStack* ustack, Array* lines, Point* pre_cursor, Point* post_cursor) {
     clear_gen_list(ustack->redo);
 
-    Array* newgen_array = array_create();
+    Array* newgen_array = array_create_capacity(lines->size + 1);
 
     Generation* lastgen = get_generation(ustack->undo);
 
@@ -118,7 +118,7 @@ void ustack_push (UStack* ustack, Array* lines, Point* pre_cursor, Point* post_c
         }
     } else {
         for (int i = 0; i < lines->size; i++) {
-            CharBuffer* line = lines->data[0];
+            CharBuffer* line = lines->data[i];
             if (line->damage) {
                 array_add(newgen_array, line_create(line));
                 line->damage = false;
@@ -162,7 +162,7 @@ void ustack_undo (UStack* ustack, Array* lines, Point* cursor) {
     // Restore previous generation (now current).
     Generation* last = get_generation(ustack->undo);
     restore(last, lines);
-    *cursor = current->pre_cursor;
+    *cursor = last->pre_cursor;
 }
 
 void ustack_redo (UStack* ustack, Array* lines, Point* cursor) {
