@@ -12,6 +12,7 @@ static void update_mem (Buffer* buffer);
 static void update_scroll (Buffer* buffer);
 static void pre_commit (Buffer* buffer, uint32_t type);
 static void commit (Buffer* buffer);
+static uint32_t chartype (uint32_t ch);
 
 Buffer* buffer_create (Editor* editor, const char* title) {
     Buffer* buffer = malloc(sizeof(Buffer));
@@ -55,19 +56,6 @@ Buffer* buffer_create (Editor* editor, const char* title) {
     return buffer;
 }
 
-static
-int last_separator (const char* filename) {
-    int last = 0;
-
-    int i = 0;
-    char c;
-    while ((c = filename[i++]) != '\0')
-        if (c == '/')
-            last = i;
-
-    return last;
-}
-
 void buffer_destroy (Buffer* buffer) {
     for (int i = 0; i < buffer->lines->size; ++i) {
         charbuffer_destroy(buffer->lines->data[i]);
@@ -76,6 +64,19 @@ void buffer_destroy (Buffer* buffer) {
     charbuffer_destroy(buffer->title);
     charbuffer_destroy(buffer->filename);
     free(buffer);
+}
+
+static
+int last_separator (const char* filename) {
+    int last = 0;
+
+    int i = 0;
+    char c;
+    while ((c = filename[i++]) != '\0')
+    if (c == '/')
+    last = i;
+
+    return last;
 }
 
 void buffer_load (Buffer* buffer, const char* filename) {
@@ -369,8 +370,9 @@ void pre_commit (Buffer* buffer, uint32_t type) {
     if (buffer->commit_level > 0) return;
     if (type != buffer->pre_commit_type && buffer->pre_commit_type != 0) {
         commit (buffer);
-        buffer->pre_cursor = buffer->cursor;
-    } else if (type == 0) {
+        //buffer->pre_cursor = buffer->cursor;
+    }
+    if (type == 0 || type != buffer->pre_commit_type) {
         buffer->pre_cursor = buffer->cursor;
     }
     buffer->pre_commit_type = type;
@@ -433,7 +435,7 @@ bool delete_selection (Buffer* buffer) {
 
 void buffer_edit_char (Buffer* buffer, uint32_t ch, int32_t i) {
     delete_selection(buffer);
-    pre_commit(buffer, 1);
+    pre_commit(buffer, 1 + chartype(ch));
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         charbuffer_ichar(line, (char) ch, buffer->cursor.col);
@@ -470,7 +472,7 @@ void buffer_edit_line (Buffer* buffer, int32_t i) {
         return;
     }
     delete_selection(buffer);
-    pre_commit(buffer, 2);
+    pre_commit(buffer, 4);
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         CharBuffer* newline = charbuffer_create();
@@ -492,7 +494,7 @@ void buffer_edit_tab (Buffer* buffer, int32_t i) {
         editor_altbuffer_tab(buffer->editor);
         return;
     }
-    if (buffer->cursor.line == buffer->selection.line && buffer->cursor.col == buffer->selection.col) {
+    if (!buffer_selection_exist(buffer)) {
         if (buffer->hard_tabs) {
             buffer_edit_char(buffer, '\t', i);
         } else {
@@ -585,7 +587,7 @@ void buffer_edit_indent (Buffer* buffer, int32_t i) {
 void buffer_edit_delete (Buffer* buffer, int32_t i) {
     if (i > 0 && delete_selection(buffer)) i--;
     if (i <= 0) return;
-    pre_commit(buffer, 3);
+    pre_commit(buffer, 8);
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         if (buffer->cursor.col >= line->size) {
@@ -607,7 +609,7 @@ void buffer_edit_delete (Buffer* buffer, int32_t i) {
 void buffer_edit_backspace (Buffer* buffer, int32_t i) {
     if (i > 0 && delete_selection(buffer)) i--;
     if (i <= 0) return;
-    pre_commit(buffer, 3);
+    pre_commit(buffer, 9);
     while (i-- > 0) {
         CharBuffer* line = buffer->lines->data[buffer->cursor.line];
         if (buffer->cursor.col <= 0) {
@@ -689,6 +691,7 @@ void buffer_edit_move_line (Buffer* buffer, int32_t i) {
 
 void buffer_edit_move_selection (Buffer* buffer, int32_t i) {
     pre_commit(buffer, 65);
+    buffer->commit_level++;
     Point begin = buffer->cursor, end = buffer->selection;
     CharBuffer* dst = charbuffer_create();
     bool sel = true;
@@ -742,6 +745,7 @@ void buffer_edit_move_selection (Buffer* buffer, int32_t i) {
         if (swap) buffer_selection_swap(buffer);
     }
 
+    buffer->commit_level--;
     buffer->modified = true;
     charbuffer_destroy(dst);
 }
@@ -827,7 +831,7 @@ void buffer_cursor_char (Buffer* buffer, int32_t i, bool sel) {
 }
 
 static
-uint32_t chartype (char ch) {
+uint32_t chartype (uint32_t ch) {
     // Whitespace.
     if (ch <= ' ')
         return 0;
@@ -1194,16 +1198,16 @@ void buffer_undo (Buffer* buffer, int32_t i) {
     pre_commit(buffer, 0);
 
     Point p;
-    ustack_undo(buffer->ustack, buffer->lines, &p);
-    buffer_cursor_goto(buffer, p.line, p.col, false);
+    bool b = ustack_undo(buffer->ustack, buffer->lines, &p);
+    if (b) buffer_cursor_goto(buffer, p.line, p.col, false);
 }
 
 void buffer_redo (Buffer* buffer, int32_t i) {
     pre_commit(buffer, 0);
 
     Point p;
-    ustack_redo(buffer->ustack, buffer->lines, &p);
-    buffer_cursor_goto(buffer, p.line, p.col, false);
+    bool b = ustack_redo(buffer->ustack, buffer->lines, &p);
+    if (b) buffer_cursor_goto(buffer, p.line, p.col, false);
 }
 
 

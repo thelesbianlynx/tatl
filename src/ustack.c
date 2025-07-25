@@ -86,8 +86,14 @@ Generation* pop_generation (Array* genlist) {
 
 UStack* ustack_create () {
     UStack* ustack = malloc(sizeof(UStack));
-    ustack->undo = array_create();
-    ustack->redo = array_create();
+    #ifdef HIST_LIMIT
+      ustack->undo = array_create_capacity(HIST_LIMIT + 1);
+      ustack->redo = array_create_capacity(HIST_LIMIT + 1);
+    #else
+      ustack->undo = array_create();
+      ustack->redo = array_create();
+    #endif
+
     return ustack;
 }
 
@@ -131,6 +137,12 @@ void ustack_push (UStack* ustack, Array* lines, Point* pre_cursor, Point* post_c
         }
     }
 
+    #ifdef HIST_LIMIT
+      if (ustack->undo->size >= HIST_LIMIT) {
+        generation_destroy((Generation*) array_remove(ustack->undo, 0));
+      }
+    #endif
+
     Generation* newgen = generation_create(newgen_array, *pre_cursor, *post_cursor);
     array_add(ustack->undo, newgen);
 }
@@ -152,25 +164,27 @@ void restore (Generation* gen, Array* lines) {
     }
 }
 
-void ustack_undo (UStack* ustack, Array* lines, Point* cursor) {
-    if (ustack->undo->size < 2) return;
+bool ustack_undo (UStack* ustack, Array* lines, Point* cursor) {
+    if (ustack->undo->size < 2) return false;
 
-    // Pop _CURRENT_ generation from the undo stack and push to redo stack.
+    // Pop CURRENT generation from the undo stack and push to redo stack.
     Generation* current = pop_generation(ustack->undo);
     array_add(ustack->redo, current);
 
     // Restore previous generation (now current).
     Generation* last = get_generation(ustack->undo);
     restore(last, lines);
-    *cursor = last->pre_cursor;
+    *cursor = current->pre_cursor;
+    return true;
 }
 
-void ustack_redo (UStack* ustack, Array* lines, Point* cursor) {
+bool ustack_redo (UStack* ustack, Array* lines, Point* cursor) {
     // Pop Generation from redo stack, restore and push to undo stack.
     Generation* gen = pop_generation(ustack->redo);
-    if (gen == NULL) return;
+    if (gen == NULL) return false;
 
     array_add(ustack->undo, gen);
     restore(gen, lines);
     *cursor = gen->post_cursor;
+    return true;
 }

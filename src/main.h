@@ -47,3 +47,8 @@ static inline int32_t MAX (int32_t a, int32_t b) {
 static inline int32_t ABS (int32_t a) {
     return a < 0 ? -a : a;
 }
+
+//
+// Defines.
+//
+#define HIST_LIMIT 1024
