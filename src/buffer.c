@@ -91,8 +91,8 @@ void buffer_load (Buffer* buffer, const char* filename) {
         for (;;) {
             CharBuffer* line = charbuffer_create();
             bool b = charbuffer_read_line(line, f);
-            array_add(buffer->lines, line);
             if (!b) break;
+            array_add(buffer->lines, line);
         }
 
         fclose(f);
