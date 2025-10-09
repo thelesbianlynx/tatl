@@ -27,6 +27,7 @@ typedef struct ustack UStack;
 
 typedef struct array Array;
 typedef struct charbuffer CharBuffer;
+typedef struct intbuffer IntBuffer;
 
 
 //
