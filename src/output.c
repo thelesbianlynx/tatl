@@ -5,6 +5,7 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "codepoint.h"
 
 static struct termios term_save;
 
@@ -63,9 +64,10 @@ int output_char (int c) {
     return c;
 }
 
-void output_uchar (uint32_t u) {
-    // Not Final.
-    output_char((char) u);
+void output_uchar (int32_t u) {
+    char buf[5] = {0};
+    codepoint_to_chars(buf, u);
+    output_str(buf);
 }
 
 

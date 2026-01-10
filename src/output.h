@@ -15,7 +15,7 @@ void output_init ();
 void output_fini ();
 
 int output_char (int c);
-void output_uchar (uint32_t u);
+void output_uchar (int32_t u);
 void output_str (const char* str);
 
 void output_frame ();

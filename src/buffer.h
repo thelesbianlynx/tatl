@@ -68,7 +68,7 @@ bool buffer_empty (Buffer* buffer);
 void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint32_t my);
 
 
-void buffer_edit_char (Buffer* buffer, uint32_t ch, int32_t i);
+void buffer_edit_char (Buffer* buffer, int32_t ch, int32_t i);
 
 void buffer_edit_text (Buffer* buffer, CharBuffer* text, int32_t i);
 
@@ -91,7 +91,7 @@ void buffer_edit_move_line (Buffer* buffer, int32_t i);
 void buffer_edit_move_selection (Buffer* buffer, int32_t i);
 
 
-void buffer_cursor_goto (Buffer* buffer, int32_t row, int32_t col, bool sel);
+void buffer_cursor_goto (Buffer* buffer, int32_t line, int32_t col, bool sel);
 
 void buffer_cursor_line (Buffer* buffer, int32_t i, bool sel);
 

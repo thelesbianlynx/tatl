@@ -129,6 +129,10 @@ void intbuffer_get_suffix (IntBuffer* buffer, uint32_t i, CharBuffer* dst) {
 }
 
 
+void intbuffer_rm_char (IntBuffer* buffer, uint32_t i) {
+    intbuffer_rm_substr(buffer, i, i+1);
+}
+
 void intbuffer_rm_substr (IntBuffer* buffer, uint32_t i , uint32_t j) {
     if (i > buffer->size) i = buffer->size;
     if (j > buffer->size) j = buffer->size;

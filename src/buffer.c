@@ -2,12 +2,13 @@
 
 #include "array.h"
 #include "charbuffer.h"
+#include "intbuffer.h"
 #include "editor.h"
 #include "output.h"
 #include "ustack.h"
 
-static int32_t cursor_fake_col (Buffer* buffer, CharBuffer* line, int32_t real_col);
-static int32_t cursor_real_col (Buffer* buffer, CharBuffer* line, int32_t fake_col);
+static int32_t cursor_fake_col (Buffer* buffer, IntBuffer* line, int32_t real_col);
+static int32_t cursor_real_col (Buffer* buffer, IntBuffer* line, int32_t fake_col);
 static void update_mem (Buffer* buffer);
 static void update_scroll (Buffer* buffer);
 static void pre_commit (Buffer* buffer, uint32_t type);
@@ -20,7 +21,7 @@ Buffer* buffer_create (Editor* editor, const char* title) {
     buffer->editor = editor;
 
     buffer->lines = array_create();
-    array_add(buffer->lines, charbuffer_create());
+    array_add(buffer->lines, intbuffer_create());
 
     buffer->cursor = buffer->selection = (Point) {0,0};
 
@@ -58,7 +59,7 @@ Buffer* buffer_create (Editor* editor, const char* title) {
 
 void buffer_destroy (Buffer* buffer) {
     for (int i = 0; i < buffer->lines->size; ++i) {
-        charbuffer_destroy(buffer->lines->data[i]);
+        intbuffer_destroy(buffer->lines->data[i]);
     }
     array_destroy(buffer->lines);
     charbuffer_destroy(buffer->title);
@@ -82,24 +83,31 @@ int last_separator (const char* filename) {
 void buffer_load (Buffer* buffer, const char* filename) {
     if (buffer->alt_mode) return;
     for (int i = 0; i < buffer->lines->size; ++i) {
-        charbuffer_destroy(buffer->lines->data[i]);
+        intbuffer_destroy(buffer->lines->data[i]);
     }
     array_clear(buffer->lines);
 
+    CharBuffer* data = charbuffer_create();
     FILE* f = fopen(filename, "r");
     if (f != NULL) {
         for (;;) {
-            CharBuffer* line = charbuffer_create();
-            bool b = charbuffer_read_line(line, f);
-            if (!b) break;
+            IntBuffer* line = intbuffer_create();
+            charbuffer_clear(data);
+            bool b = charbuffer_read_line(data, f);
+            if (!b) {
+                intbuffer_destroy(line);
+                break;
+            }
+            intbuffer_put_text(line, 0, data);
             array_add(buffer->lines, line);
         }
 
         fclose(f);
     }
+    charbuffer_destroy(data);
 
     if (buffer->lines->size == 0) {
-        CharBuffer* line = charbuffer_create();
+        IntBuffer* line = intbuffer_create();
         array_add(buffer->lines, line);
     }
 
@@ -107,6 +115,7 @@ void buffer_load (Buffer* buffer, const char* filename) {
     charbuffer_clear(buffer->filename);
     charbuffer_astr(buffer->title, filename + last_separator(filename));
     charbuffer_astr(buffer->filename, filename);
+
     buffer_cursor_goto(buffer, 0, 0, false);
     ustack_clear(buffer->ustack);
     buffer->pre_commit_type = 0;
@@ -118,12 +127,16 @@ void buffer_load (Buffer* buffer, const char* filename) {
 bool buffer_save (Buffer* buffer) {
     if (buffer->alt_mode) return true;
     if (buffer->filename->size > 0) {
+        CharBuffer* data = charbuffer_create();
         FILE* f = fopen(buffer->filename->buffer, "w");
         for (int i = 0; i < buffer->lines->size; i++) {
-            CharBuffer* line = buffer->lines->data[i];
-            fprintf(f, "%s\n", line->buffer);
+            IntBuffer* line = buffer->lines->data[i];
+            charbuffer_clear(data);
+            intbuffer_get_suffix(line, 0, data);
+            fprintf(f, "%s\n", data->buffer);
         }
         fclose(f);
+        charbuffer_destroy(data);
         buffer->modified = false;
         return true;
     }
@@ -149,19 +162,22 @@ void buffer_title (Buffer* buffer, const char* title) {
 void buffer_prompt (Buffer* buffer, const char* prompt) {
     if (!buffer->alt_mode) return;
     for (int i = 0; i < buffer->lines->size; ++i) {
-        charbuffer_destroy(buffer->lines->data[i]);
+        intbuffer_destroy(buffer->lines->data[i]);
     }
     array_clear(buffer->lines);
 
-    CharBuffer* line = charbuffer_create();
-    charbuffer_astr(line, prompt);
+    CharBuffer* data = charbuffer_create();
+    charbuffer_astr(data, prompt);
+    IntBuffer* line = intbuffer_create();
+    intbuffer_put_text(line, 0, data);
+    charbuffer_destroy(data);
     array_add(buffer->lines, line);
     buffer_cursor_goto(buffer, 0, INT_MAX, false);
 }
 
 bool buffer_empty (Buffer* buffer) {
     if (buffer->lines->size == 1) {
-        CharBuffer* line = buffer->lines->data[0];
+        IntBuffer* line = buffer->lines->data[0];
         if (line->size == 0) {
             return true;
         }
@@ -172,7 +188,7 @@ bool buffer_empty (Buffer* buffer) {
 
 void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint32_t my) {
     // Line Number Width.
-    int32_t ln_width = (int) log10(buffer->lines->size + 1) + 3;
+    int32_t ln_width = (int) log10(buffer->lines->size) + 3;
 
     // Alt Buffer Prompt width.
     if (buffer->alt_mode) {
@@ -265,7 +281,7 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
             break;
         }
 
-        CharBuffer* line = buffer->lines->data[lineno];
+        IntBuffer* line = buffer->lines->data[lineno];
 
         // Line Number.
         output_cup(window.y + i, window.x);
@@ -309,10 +325,10 @@ void buffer_draw (Buffer* buffer, Box window, uint32_t mstate, uint32_t mx, uint
             }
 
             if (j < line->size) {
-                if (line->buffer[j] > 32) {
-                    output_char(line->buffer[j]);
+                if (line->data[j] > 32) {
+                    output_uchar(line->data[j]);
                     col++;
-                } else if (line->buffer[j] == '\t') {
+                } else if (line->data[j] == '\t') {
                     int32_t t = buffer->tab_width - MOD(col, buffer->tab_width);
                     for (int k = 0; k < t; k++) {
                         output_char(' ');
@@ -381,7 +397,7 @@ void pre_commit (Buffer* buffer, uint32_t type) {
 static
 void commit (Buffer* buffer) {
     if (buffer->commit_level > 0) return;
-    ustack_push(buffer->ustack, buffer->lines, &buffer->pre_cursor, &buffer->cursor);
+    //ustack_push(buffer->ustack, buffer->lines, &buffer->pre_cursor, &buffer->cursor);
     buffer->pre_commit_type = 0;
 }
 
@@ -398,8 +414,8 @@ bool delete_selection (Buffer* buffer) {
             end = buffer->cursor;
         }
         pre_commit(buffer, 0);
-        CharBuffer* line = buffer->lines->data[begin.line];
-        charbuffer_rm_substr(line, begin.col, end.col);
+        IntBuffer* line = buffer->lines->data[begin.line];
+        intbuffer_rm_substr(line, begin.col, end.col);
         buffer->cursor = buffer->selection = begin;
         update_mem(buffer);
         commit(buffer);
@@ -411,18 +427,18 @@ bool delete_selection (Buffer* buffer) {
     }
 
     pre_commit(buffer, 0);
-    CharBuffer* line_begin = buffer->lines->data[begin.line];
-    charbuffer_rm_suffix(line_begin, begin.col);
+    IntBuffer* line_begin = buffer->lines->data[begin.line];
+    intbuffer_rm_suffix(line_begin, begin.col);
 
     for (int i = begin.line + 1; i < end.line; i++) {
-        CharBuffer* line = array_remove(buffer->lines, begin.line + 1);
-        charbuffer_destroy(line);
+        IntBuffer* line = array_remove(buffer->lines, begin.line + 1);
+        intbuffer_destroy(line);
     }
 
-    CharBuffer* line_end = array_remove(buffer->lines, begin.line + 1);
-    charbuffer_rm_prefix(line_end, end.col);
-    charbuffer_achars(line_begin, line_end);
-    charbuffer_destroy(line_end);
+    IntBuffer* line_end = array_remove(buffer->lines, begin.line + 1);
+    intbuffer_rm_prefix(line_end, end.col);
+    intbuffer_put_suffix(line_begin, line_begin->size, line_end, 0);
+    intbuffer_destroy(line_end);
 
     buffer->cursor = buffer->selection = begin;
     update_mem(buffer);
@@ -433,12 +449,12 @@ bool delete_selection (Buffer* buffer) {
 }
 
 
-void buffer_edit_char (Buffer* buffer, uint32_t ch, int32_t i) {
+void buffer_edit_char (Buffer* buffer, int32_t ch, int32_t i) {
     delete_selection(buffer);
     pre_commit(buffer, 1 + chartype(ch));
     while (i-- > 0) {
-        CharBuffer* line = buffer->lines->data[buffer->cursor.line];
-        charbuffer_ichar(line, (char) ch, buffer->cursor.col);
+        IntBuffer* line = buffer->lines->data[buffer->cursor.line];
+        intbuffer_put_char(line, buffer->cursor.col, ch);
         buffer->cursor.col++;
     }
 
@@ -452,9 +468,11 @@ void buffer_edit_text (Buffer* buffer, CharBuffer* text, int32_t i) {
     delete_selection(buffer);
     pre_commit(buffer, 0);
     buffer->commit_level++;
+    IntBuffer* data = intbuffer_create();
+    intbuffer_put_text(data, 0, text);
     while (i-- > 0) {
-        for (int j = 0; j < text->size; j++) {
-            uint32_t ch = text->buffer[j];
+        for (int j = 0; j < data->size; j++) {
+            int32_t ch = data->data[j];
             if (ch == '\t' || ch >= 32) {
                 buffer_edit_char(buffer, ch, 1);
             } else if (ch == '\n') {
@@ -462,6 +480,7 @@ void buffer_edit_text (Buffer* buffer, CharBuffer* text, int32_t i) {
             }
         }
     }
+    intbuffer_destroy(data);
     buffer->commit_level--;
     commit(buffer);
 }
@@ -474,10 +493,10 @@ void buffer_edit_line (Buffer* buffer, int32_t i) {
     delete_selection(buffer);
     pre_commit(buffer, 4);
     while (i-- > 0) {
-        CharBuffer* line = buffer->lines->data[buffer->cursor.line];
-        CharBuffer* newline = charbuffer_create();
-        charbuffer_get_suffix(line, newline, buffer->cursor.col);
-        charbuffer_rm_suffix(line, buffer->cursor.col);
+        IntBuffer* line = buffer->lines->data[buffer->cursor.line];
+        IntBuffer* newline = intbuffer_create();
+        intbuffer_put_suffix(newline, 0, line, buffer->cursor.col);
+        intbuffer_rm_suffix(line, buffer->cursor.col);
         array_insert(buffer->lines, buffer->cursor.line + 1, newline);
         buffer->cursor.line++;
         buffer->cursor.col = 0;
@@ -521,17 +540,17 @@ void buffer_edit_indent (Buffer* buffer, int32_t i) {
         while (i-- > 0) {
             if (buffer->hard_tabs) {
                 for (int x = begin.line; x <= end.line; x++) {
-                    CharBuffer* line = buffer->lines->data[x];
-                    charbuffer_ichar(line, '\t', 0);
+                    IntBuffer* line = buffer->lines->data[x];
+                    intbuffer_put_char(line, 0, '\t');
                 }
                 // Actually I think this is correct:
                 buffer->cursor.col++;
                 buffer->selection.col++;
             } else {
                 for (int x = begin.line; x <= end.line; x++) {
-                    CharBuffer* line = buffer->lines->data[x];
+                    IntBuffer* line = buffer->lines->data[x];
                     for (int y = 0; y < buffer->tab_width; y++)
-                        charbuffer_ichar(line, ' ', 0);
+                        intbuffer_put_char(line, 0, ' ');
                 }
                 buffer->cursor.col += buffer->tab_width;
                 buffer->selection.col += buffer->tab_width;
@@ -540,10 +559,10 @@ void buffer_edit_indent (Buffer* buffer, int32_t i) {
     } else {
         while (i++ < 0) {
             for (int x = begin.line; x <= end.line; x++) {
-                CharBuffer* line = buffer->lines->data[x];
+                IntBuffer* line = buffer->lines->data[x];
                 if (line->size == 0) continue;
-                if (line->buffer[0] == '\t') {
-                    charbuffer_rm_char(line, 0);
+                if (line->data[0] == '\t') {
+                    intbuffer_rm_char(line, 0);
                     if (x == buffer->cursor.line) {
                         buffer->cursor.col--;
                         if (buffer->cursor.col < 0) {
@@ -557,11 +576,11 @@ void buffer_edit_indent (Buffer* buffer, int32_t i) {
                         }
                     }
                 }
-                if (line->buffer[0] == ' ') {
+                if (line->data[0] == ' ') {
                     int y;
                     for (y = 0; y < buffer->tab_width; y++) {
-                        if (line->size == 0 || line->buffer[0] != ' ') break;
-                        charbuffer_rm_char(line, 0);
+                        if (line->size == 0 || line->data[0] != ' ') break;
+                        intbuffer_rm_char(line, 0);
                     }
                     if (x == buffer->cursor.line) {
                         buffer->cursor.col -= y;
@@ -589,16 +608,16 @@ void buffer_edit_delete (Buffer* buffer, int32_t i) {
     if (i <= 0) return;
     pre_commit(buffer, 8);
     while (i-- > 0) {
-        CharBuffer* line = buffer->lines->data[buffer->cursor.line];
+        IntBuffer* line = buffer->lines->data[buffer->cursor.line];
         if (buffer->cursor.col >= line->size) {
             if (buffer->alt_mode) return;
             if (buffer->cursor.line < buffer->lines->size - 1) {
-                CharBuffer* nextline = array_remove(buffer->lines, buffer->cursor.line + 1);
-                charbuffer_achars(line, nextline);
-                charbuffer_destroy(nextline);
+                IntBuffer* nextline = array_remove(buffer->lines, buffer->cursor.line + 1);
+                intbuffer_put_suffix(line, line->size, nextline, 0);
+                intbuffer_destroy(nextline);
             }
         } else {
-            charbuffer_rm_char(line, buffer->cursor.col);
+            intbuffer_rm_char(line, buffer->cursor.col);
         }
     }
 
@@ -611,19 +630,19 @@ void buffer_edit_backspace (Buffer* buffer, int32_t i) {
     if (i <= 0) return;
     pre_commit(buffer, 9);
     while (i-- > 0) {
-        CharBuffer* line = buffer->lines->data[buffer->cursor.line];
+        IntBuffer* line = buffer->lines->data[buffer->cursor.line];
         if (buffer->cursor.col <= 0) {
             if (buffer->alt_mode) return;
             if (buffer->cursor.line > 0) {
-                CharBuffer* prevline = buffer->lines->data[buffer->cursor.line - 1];
+                IntBuffer* prevline = buffer->lines->data[buffer->cursor.line - 1];
                 buffer->cursor.col = prevline->size;
                 array_remove(buffer->lines, buffer->cursor.line);
-                charbuffer_achars(prevline, line);
-                charbuffer_destroy(line);
+                intbuffer_put_suffix(prevline, prevline->size, line, 0);
+                intbuffer_destroy(line);
                 buffer->cursor.line--;
             }
         } else {
-            charbuffer_rm_char(line, buffer->cursor.col - 1);
+            intbuffer_rm_char(line, buffer->cursor.col - 1);
             buffer->cursor.col--;
         }
     }
@@ -664,7 +683,7 @@ void buffer_edit_move_line (Buffer* buffer, int32_t i) {
                 bot = swap;
             }
             if (top <= 0) break;
-            CharBuffer* line = array_remove(buffer->lines, top - 1);
+            IntBuffer* line = array_remove(buffer->lines, top - 1);
             array_insert(buffer->lines, bot, line);
             buffer->cursor.line--;
             buffer->selection.line--;
@@ -679,7 +698,7 @@ void buffer_edit_move_line (Buffer* buffer, int32_t i) {
                 bot = swap;
             }
             if (bot >= buffer->lines->size - 1) break;
-            CharBuffer* line = array_remove(buffer->lines, bot + 1);
+            IntBuffer* line = array_remove(buffer->lines, bot + 1);
             array_insert(buffer->lines, top, line);
             buffer->cursor.line++;
             buffer->selection.line++;
@@ -689,53 +708,41 @@ void buffer_edit_move_line (Buffer* buffer, int32_t i) {
     buffer->modified = true;
 }
 
+static
+bool select_dir (Buffer* buffer) {
+    if (buffer->cursor.line == buffer->selection.line) {
+        if (buffer->cursor.col < buffer->selection.col)
+            return false;
+    } else {
+        if (buffer->cursor.line < buffer->selection.line)
+            return false;
+    }
+    return true;
+}
+
 void buffer_edit_move_selection (Buffer* buffer, int32_t i) {
     pre_commit(buffer, 65);
     buffer->commit_level++;
-    Point begin = buffer->cursor, end = buffer->selection;
     CharBuffer* dst = charbuffer_create();
-    bool sel = true;
-    bool swap = false;
+    bool sel = false;
+    bool swap = !select_dir(buffer);
 
-    if (begin.line == end.line) {
-        if (begin.col == end.col){
-            sel = false;
-            CharBuffer* line = buffer->lines->data[begin.line];
-            if (begin.col < line->size) {
-                charbuffer_achar(dst, line->buffer[begin.col]);
-            }
-        } else {
-            if (begin.col > end.col) {
-                begin = buffer->selection;
-                end = buffer->cursor;
-                swap = true;
-            }
-            CharBuffer* line = buffer->lines->data[begin.line];
-            charbuffer_get_substr(line, dst, begin.col, end.col);
-        }
+    if (buffer_selection_exist(buffer)) {
+        buffer_selection_cut(buffer, dst);
+        sel = true;
     } else {
-        if (begin.line > end.line) {
-            begin = buffer->selection;
-            end = buffer->cursor;
-            swap = true;
-        }
-
-        CharBuffer* line_begin = buffer->lines->data[begin.line];
-        charbuffer_get_suffix(line_begin, dst, begin.col);
-
-        for (int i = begin.line + 1; i < end.line; i++) {
-            CharBuffer* line = buffer->lines->data[i];
+        IntBuffer* line = buffer->lines->data[buffer->cursor.line];
+        if (buffer->cursor.col >= line->size) {
             charbuffer_achar(dst, '\n');
-            charbuffer_achars(dst, line);
+        } else {
+            intbuffer_get_substr(line, buffer->cursor.col, buffer->cursor.col + 1, dst);
         }
-
-        CharBuffer* line_end = buffer->lines->data[end.line];
-        charbuffer_achar(dst, '\n');
-        charbuffer_get_prefix(line_end, dst, end.col);
+        buffer_edit_delete(buffer, 1);
     }
 
-    buffer_edit_delete(buffer, 1);
+    // This motion may be different (word, line, etc.)
     buffer_cursor_char(buffer, i, false);
+
     Point a = buffer->cursor;
     buffer_edit_text(buffer, dst, 1);
     Point b = buffer->cursor;
@@ -757,7 +764,7 @@ void buffer_cursor_goto (Buffer* buffer, int32_t row, int32_t col, bool sel) {
     if (row >= buffer->lines->size) row = buffer->lines->size - 1;
     if (buffer->alt_mode) row = 0;
 
-    CharBuffer* line = buffer->lines->data[row];
+    IntBuffer* line = buffer->lines->data[row];
     if (col > line->size) col = line->size;
 
     buffer->cursor.line = row;
@@ -783,7 +790,7 @@ void buffer_cursor_line (Buffer* buffer, int32_t i, bool sel) {
     if (buffer->cursor.line >= buffer->lines->size) buffer->cursor.line = buffer->lines->size - 1;
 
     // Line Wrapping logic goes here...
-    CharBuffer* line = buffer->lines->data[buffer->cursor.line];
+    IntBuffer* line = buffer->lines->data[buffer->cursor.line];
     buffer->cursor.col = cursor_real_col(buffer, line, buffer->col_mem);
 
     update_scroll(buffer);
@@ -805,12 +812,12 @@ void buffer_cursor_char (Buffer* buffer, int32_t i, bool sel) {
             if (buffer->alt_mode) break;
             if (buffer->cursor.line <= 0) break;
             buffer->cursor.line--;
-            CharBuffer* line = buffer->lines->data[buffer->cursor.line];
+            IntBuffer* line = buffer->lines->data[buffer->cursor.line];
             buffer->cursor.col = line->size;
             continue;
         }
 
-        CharBuffer* line = buffer->lines->data[buffer->cursor.line];
+        IntBuffer* line = buffer->lines->data[buffer->cursor.line];
         if (c > line->size) {
             if (buffer->alt_mode) break;
             if (buffer->cursor.line >= buffer->lines->size - 1) break;
@@ -853,8 +860,8 @@ void buffer_cursor_word (Buffer* buffer, int32_t lead, int32_t i, bool sel) {
         // Leading Move.
         buffer_cursor_char(buffer, d * lead, true);
 
-        CharBuffer* line = buffer->lines->data[buffer->cursor.line];
-        char ch = line->buffer[buffer->cursor.col - (d > 0 ? 0 : 1)];
+        IntBuffer* line = buffer->lines->data[buffer->cursor.line];
+        char ch = line->data[buffer->cursor.col - (d > 0 ? 0 : 1)];
         uint32_t type = chartype(ch);
 
         // Forward.
@@ -866,7 +873,7 @@ void buffer_cursor_word (Buffer* buffer, int32_t lead, int32_t i, bool sel) {
                     break;
                 }
 
-                char c = line->buffer[buffer->cursor.col];
+                char c = line->data[buffer->cursor.col];
                 uint32_t t = chartype(c);
                 if (t != type) {
                     break;
@@ -883,7 +890,7 @@ void buffer_cursor_word (Buffer* buffer, int32_t lead, int32_t i, bool sel) {
                     break;
                 }
 
-                char c = line->buffer[buffer->cursor.col - 1];
+                char c = line->data[buffer->cursor.col - 1];
                 uint32_t t = chartype(c);
                 if (t != type) {
                     break;
@@ -901,9 +908,9 @@ void buffer_cursor_word (Buffer* buffer, int32_t lead, int32_t i, bool sel) {
 }
 
 static
-int32_t line_ws (CharBuffer* line) {
+int32_t line_ws (IntBuffer* line) {
     for (int i = 0; i < line->size; i++) {
-        if (chartype(line->buffer[i]) != 0) return 1;
+        if (chartype(line->data[i]) != 0) return 1;
     }
     return 0;
 }
@@ -919,7 +926,7 @@ void buffer_cursor_paragraph (Buffer* buffer, int32_t lead, int32_t i, bool sel)
         // Leading Move.
         buffer_cursor_line(buffer, d * lead, true);
 
-        CharBuffer* line = buffer->lines->data[buffer->cursor.line];
+        IntBuffer* line = buffer->lines->data[buffer->cursor.line];
         int32_t ws = line_ws(line);
         for (;;) {
             int lineno = buffer->cursor.line;
@@ -953,7 +960,7 @@ void buffer_cursor_home (Buffer* buffer, bool sel) {
 void buffer_cursor_end (Buffer* buffer, bool sel) {
     pre_commit(buffer, 0);
     buffer->cursor.line = buffer->lines->size - 1;
-    CharBuffer* line = buffer->lines->data[buffer->cursor.line];
+    IntBuffer* line = buffer->lines->data[buffer->cursor.line];
     buffer->cursor.col = line->size;
 
     update_mem(buffer);
@@ -978,7 +985,7 @@ void buffer_cursor_line_begin (Buffer* buffer, bool sel) {
 
 void buffer_cursor_line_end (Buffer* buffer, bool sel) {
     pre_commit(buffer, 0);
-    CharBuffer* line = buffer->lines->data[buffer->cursor.line];
+    IntBuffer* line = buffer->lines->data[buffer->cursor.line];
     buffer->cursor.col = line->size;
 
     update_mem(buffer);
@@ -1006,21 +1013,21 @@ void buffer_select_word (Buffer* buffer) {
         return;
     }
 
-    CharBuffer* line = buffer->lines->data[buffer->cursor.line];
-    uint32_t type = chartype(line->buffer[buffer->cursor.col]);
+    IntBuffer* line = buffer->lines->data[buffer->cursor.line];
+    uint32_t type = chartype(line->data[buffer->cursor.col]);
 
     int32_t min = buffer->cursor.col;
     int32_t max = min;
 
     for (;;) {
         if (min <= 0) break;
-        if (chartype(line->buffer[min - 1]) != type) break;
+        if (chartype(line->data[min - 1]) != type) break;
         min--;
     }
 
     for (;;) {
         if (max >= line->size) break;
-        if (chartype(line->buffer[max]) != type) break;
+        if (chartype(line->data[max]) != type) break;
         max++;
     }
 
@@ -1034,7 +1041,7 @@ void buffer_select_word (Buffer* buffer) {
 void buffer_select_line (Buffer* buffer) {
     pre_commit(buffer, 0);
     if (buffer->cursor.line == buffer->selection.line) {
-        CharBuffer* line = buffer->lines->data[buffer->cursor.line];
+        IntBuffer* line = buffer->lines->data[buffer->cursor.line];
         if (buffer->cursor.col >= buffer->selection.col) {
             if (buffer->cursor.col < line->size || buffer->selection.col > 0) {
                 buffer->cursor.col = line->size;
@@ -1053,8 +1060,8 @@ void buffer_select_line (Buffer* buffer) {
             }
         }
     } else if (buffer->cursor.line > buffer->selection.line) {
-        CharBuffer* cline = buffer->lines->data[buffer->cursor.line];
-        //CharBuffer* sline = buffer->lines->data[buffer->selection.line];
+        IntBuffer* cline = buffer->lines->data[buffer->cursor.line];
+        //IntBuffer* sline = buffer->lines->data[buffer->selection.line];
         if (buffer->cursor.col < cline->size || buffer->selection.col > 0) {
             buffer->cursor.col = cline->size;
             buffer->selection.col = 0;
@@ -1063,8 +1070,8 @@ void buffer_select_line (Buffer* buffer) {
             // ...
         }
     } else {
-        //CharBuffer* cline = buffer->lines->data[buffer->cursor.line];
-        CharBuffer* sline = buffer->lines->data[buffer->selection.line];
+        //IntBuffer* cline = buffer->lines->data[buffer->cursor.line];
+        IntBuffer* sline = buffer->lines->data[buffer->selection.line];
         if (buffer->cursor.col > 0 || buffer->selection.col < sline->size) {
             buffer->cursor.col = 0;
             buffer->selection.col = sline->size;
@@ -1101,26 +1108,26 @@ void buffer_selection_copy (Buffer* buffer, CharBuffer* dst) {
             begin = buffer->selection;
             end = buffer->cursor;
         }
-        CharBuffer* line = buffer->lines->data[begin.line];
-        charbuffer_get_substr(line, dst, begin.col, end.col);
+        IntBuffer* line = buffer->lines->data[begin.line];
+        intbuffer_get_substr(line, begin.col, end.col, dst);
     } else {
         if (begin.line > end.line) {
             begin = buffer->selection;
             end = buffer->cursor;
         }
 
-        CharBuffer* line_begin = buffer->lines->data[begin.line];
-        charbuffer_get_suffix(line_begin, dst, begin.col);
+        IntBuffer* line_begin = buffer->lines->data[begin.line];
+        intbuffer_get_suffix(line_begin, begin.col, dst);
 
         for (int i = begin.line + 1; i < end.line; i++) {
-            CharBuffer* line = buffer->lines->data[i];
+            IntBuffer* line = buffer->lines->data[i];
             charbuffer_achar(dst, '\n');
-            charbuffer_achars(dst, line);
+            intbuffer_get_suffix(line, 0, dst);
         }
 
-        CharBuffer* line_end = buffer->lines->data[end.line];
+        IntBuffer* line_end = buffer->lines->data[end.line];
         charbuffer_achar(dst, '\n');
-        charbuffer_get_prefix(line_end, dst, end.col);
+        intbuffer_get_prefix(line_end, end.col, dst);
     }
 }
 
@@ -1132,46 +1139,33 @@ void buffer_selection_cut (Buffer* buffer, CharBuffer* dst) {
 void buffer_selection_duplicate (Buffer* buffer, int32_t i) {
     pre_commit(buffer, 0);
     buffer->commit_level++;
-    Point begin = buffer->cursor, end = buffer->selection;
     CharBuffer* dst = charbuffer_create();
-    bool swap = false;
+    bool sel = false;
+    bool swap = !select_dir(buffer);
 
-    if (begin.line == end.line) {
-        if (begin.col > end.col) {
-            begin = buffer->selection;
-            end = buffer->cursor;
-            swap = true;
-        }
-        CharBuffer* line = buffer->lines->data[begin.line];
-        charbuffer_get_substr(line, dst, begin.col, end.col);
+    if (buffer_selection_exist(buffer)) {
+        buffer_selection_copy(buffer, dst);
+        if (swap) buffer_selection_swap(buffer);
+        buffer->selection = buffer->cursor;
+        sel = true;
     } else {
-        if (begin.line > end.line) {
-            begin = buffer->selection;
-            end = buffer->cursor;
-            swap = true;
-        }
-
-        CharBuffer* line_begin = buffer->lines->data[begin.line];
-        charbuffer_get_suffix(line_begin, dst, begin.col);
-
-        for (int i = begin.line + 1; i < end.line; i++) {
-            CharBuffer* line = buffer->lines->data[i];
+        IntBuffer* line = buffer->lines->data[buffer->cursor.line];
+        if (buffer->cursor.col >= line->size) {
             charbuffer_achar(dst, '\n');
-            charbuffer_achars(dst, line);
+        } else {
+            intbuffer_get_substr(line, buffer->cursor.col, buffer->cursor.col + 1, dst);
         }
-
-        CharBuffer* line_end = buffer->lines->data[end.line];
-        charbuffer_achar(dst, '\n');
-        charbuffer_get_prefix(line_end, dst, end.col);
+        buffer_cursor_char(buffer, 1, false);
     }
 
-    buffer_cursor_goto(buffer, end.line, end.col, false);
+    Point a = buffer->cursor;
     buffer_edit_text(buffer, dst, i);
-
-    Point c = buffer->cursor;
-    buffer_cursor_goto(buffer, end.line, end.col, false);
-    buffer_cursor_goto(buffer, c.line, c.col, true);
-    if (swap) buffer_selection_swap(buffer);
+    Point b = buffer->cursor;
+    buffer_cursor_goto(buffer, a.line, a.col, false);
+    if (sel) {
+        buffer_cursor_goto(buffer, b.line, b.col, true);
+        if (swap) buffer_selection_swap(buffer);
+    }
 
     buffer->commit_level--;
     commit(buffer);
@@ -1186,8 +1180,8 @@ void buffer_selection_delete_whitespace (Buffer* buffer) {
 
 void buffer_get_contents (Buffer* buffer, CharBuffer* dst) {
     if (buffer->alt_mode) {
-        CharBuffer* line = buffer->lines->data[0];
-        charbuffer_achars(dst, line);
+        IntBuffer* line = buffer->lines->data[0];
+        intbuffer_get_suffix(line, 0, dst);
     } else {
         // ,,,
     }
@@ -1195,26 +1189,26 @@ void buffer_get_contents (Buffer* buffer, CharBuffer* dst) {
 
 
 void buffer_undo (Buffer* buffer, int32_t i) {
-    pre_commit(buffer, 0);
-
-    Point p;
-    bool b = ustack_undo(buffer->ustack, buffer->lines, &p);
-    if (b) buffer_cursor_goto(buffer, p.line, p.col, false);
+    // pre_commit(buffer, 0);
+    //
+    // Point p;
+    // bool b = ustack_undo(buffer->ustack, buffer->lines, &p);
+    // if (b) buffer_cursor_goto(buffer, p.line, p.col, false);
 }
 
 void buffer_redo (Buffer* buffer, int32_t i) {
-    pre_commit(buffer, 0);
-
-    Point p;
-    bool b = ustack_redo(buffer->ustack, buffer->lines, &p);
-    if (b) buffer_cursor_goto(buffer, p.line, p.col, false);
+    // pre_commit(buffer, 0);
+    //
+    // Point p;
+    // bool b = ustack_redo(buffer->ustack, buffer->lines, &p);
+    // if (b) buffer_cursor_goto(buffer, p.line, p.col, false);
 }
 
 
 static
-int32_t cursor_real_col (Buffer* buffer, CharBuffer* line, int32_t fake_col) {
+int32_t cursor_real_col (Buffer* buffer, IntBuffer* line, int32_t fake_col) {
     for (int i = 0; i < line->size; i++) {
-        if (line->buffer[i] == '\t') {
+        if (line->data[i] == '\t') {
             fake_col -= buffer->tab_width - MOD(i, buffer->tab_width);
         } else {
             fake_col--;
@@ -1225,11 +1219,11 @@ int32_t cursor_real_col (Buffer* buffer, CharBuffer* line, int32_t fake_col) {
 }
 
 static
-int32_t cursor_fake_col (Buffer* buffer, CharBuffer* line, int32_t real_col) {
+int32_t cursor_fake_col (Buffer* buffer, IntBuffer* line, int32_t real_col) {
     int32_t r = 0;
     for (int i = 0; i < real_col; i++) {
         if (i >= line->size) break;
-        if (line->buffer[i] == '\t') {
+        if (line->data[i] == '\t') {
             r += buffer->tab_width - MOD(i, buffer->tab_width);
         } else {
             r++;
