@@ -2,6 +2,8 @@
 
 #include "main.h"
 
+#ifdef TATL_DEPRECATED
+
 
 struct point {
     int32_t line, col;
@@ -138,3 +140,5 @@ void buffer_get_contents (Buffer* buffer, CharBuffer* dst);
 void buffer_undo (Buffer* buffer, int32_t i);
 
 void buffer_redo (Buffer* buffer, int32_t i);
+
+#endif

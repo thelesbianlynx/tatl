@@ -1,5 +1,8 @@
 #include "ustack.h"
 
+#ifdef TATL_DEPRECATED
+
+
 #include "array.h"
 #include "charbuffer.h"
 #include "buffer.h"
@@ -188,3 +191,5 @@ bool ustack_redo (UStack* ustack, Array* lines, Point* cursor) {
     *cursor = gen->post_cursor;
     return true;
 }
+
+#endif

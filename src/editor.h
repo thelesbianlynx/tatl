@@ -2,6 +2,8 @@
 
 #include "main.h"
 
+#ifdef TATL_DEPRECATED
+
 
 struct editor {
     Array* buffers;
@@ -49,3 +51,5 @@ void editor_altbuffer_enter (Editor* editor);
 void editor_altbuffer_tab (Editor* editor);
 void editor_altbuffer_up (Editor* editor);
 void editor_altbuffer_down (Editor* editor);
+
+#endif

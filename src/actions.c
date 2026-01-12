@@ -1,5 +1,7 @@
 #include "actions.h"
 
+#ifdef TATL_DEPRECATED
+
 #include "input.h"
 #include "array.h"
 #include "editor.h"
@@ -377,3 +379,5 @@ void a_find (Editor* editor, Buffer* buffer, int32_t count) {}
 void a_find_next (Editor* editor, Buffer* buffer, int32_t count) {}
 void a_find_prev (Editor* editor, Buffer* buffer, int32_t count) {}
 void a_replace (Editor* editor, Buffer* buffer, int32_t count) {}
+
+#endif

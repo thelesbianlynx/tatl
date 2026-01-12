@@ -1,5 +1,7 @@
 #include "editor.h"
 
+#ifdef TATL_DEPRECATED
+
 #include "actions.h"
 #include "array.h"
 #include "buffer.h"
@@ -472,3 +474,5 @@ void draw_tab_bar (Editor* editor, Box box, uint32_t mstate, uint32_t mx, uint32
     }
     output_normal();
 }
+
+#endif

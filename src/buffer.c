@@ -1,5 +1,7 @@
 #include "buffer.h"
 
+#ifdef TATL_DEPRECATED
+
 #include "array.h"
 #include "charbuffer.h"
 #include "intbuffer.h"
@@ -1241,3 +1243,5 @@ static
 void update_scroll (Buffer* buffer) {
     buffer->scroll_damage = true;
 }
+
+#endif

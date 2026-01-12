@@ -2,6 +2,8 @@
 
 #include "main.h"
 
+#ifdef TATL_DEPRECATED
+
 
 // Action Function Template.
 typedef void (*action_fn) (Editor* editor, Buffer* buffer, int32_t count);
@@ -136,3 +138,5 @@ void a_find (Editor* editor, Buffer* buffer, int32_t count);
 void a_find_next (Editor* editor, Buffer* buffer, int32_t count);
 void a_find_prev (Editor* editor, Buffer* buffer, int32_t count);
 void a_replace (Editor* editor, Buffer* buffer, int32_t count);
+
+#endif

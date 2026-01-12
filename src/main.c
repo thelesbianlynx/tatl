@@ -28,6 +28,7 @@ int main (int argc, char** argv) {
     //
     output_init();
 
+    #ifdef TATL_DEPRECATED
     struct editor editor;
     editor_init(&editor, filenames);
 
@@ -53,6 +54,7 @@ int main (int argc, char** argv) {
     }
 
     editor_fini(&editor);
+    #endif
 
     output_cnorm();
     output_fini();
