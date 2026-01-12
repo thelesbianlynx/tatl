@@ -25,6 +25,8 @@ void array_clear (Array* array);
 void  array_push (Array* array, void* item);
 void* array_pop  (Array* array);
 
+void* array_peek (Array* array);
+
 void* array_get (Array* array, int32_t index);
 void* array_set (Array* array, int32_t index, void* item);
 

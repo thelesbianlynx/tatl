@@ -79,6 +79,10 @@ void* array_set (Array* array, int32_t index, void* item) {
     return r;
 }
 
+void* array_peek (Array* array) {
+    return array->size > 0 ? array->data[array->size - 1] : NULL;
+}
+
 void array_insert (Array* array, int32_t index, void* item) {
     if (index < 0) return;
     if (index >= array->size) {

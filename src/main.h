@@ -19,6 +19,11 @@ typedef struct editor Editor;
 
 typedef struct rope Rope;
 
+typedef struct textbuffer TextBuffer;
+typedef struct selection Selection;
+
+typedef struct textview TextView;
+
 typedef struct point Point;
 typedef struct buffer Buffer;
 
@@ -29,6 +34,8 @@ typedef struct charbuffer CharBuffer;
 typedef struct intbuffer IntBuffer;
 
 typedef struct input_event InputEvent;
+typedef struct mouse_event MouseEvent;
+
 
 typedef struct box Box;
 

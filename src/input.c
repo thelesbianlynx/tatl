@@ -141,6 +141,7 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
         }
 
         if (n >= 3 && buffer[0] == '\e' && buffer[1] == '[') {
+            #ifdef TATL_DEPRECATED
             if (buffer[2] == 'M' && n >= 6) {
                 // Mouse Event.
                 event->type = INPUT_MOUSE;
@@ -164,6 +165,31 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
                 }
                 return false;
             }
+            #else
+            if (buffer[2] == 'M' && n >= 6) {
+                // Mouse Event.
+                event->type = INPUT_MOUSE;
+                event->m_event.button = buffer[3] - 32;
+                event->m_event.x = (uint8_t) buffer[4] - 32;
+                event->m_event.y = (uint8_t) buffer[5] - 32;
+                return true;
+            }
+
+            if (buffer[2] == '<') {
+                // SGR-Mouse Event.
+                char c;
+                uint32_t x, y, button;
+                parseCSI(buffer + 3, n - 3, &c, &x, &y, &button);
+                if (c != 'm') {
+                    event->type = INPUT_MOUSE;
+                    event->m_event.button = button;
+                    event->m_event.x = x;
+                    event->m_event.y = y;
+                    return true;
+                }
+                return false;
+            }
+            #endif
 
             // for (int i = 0; i < n && i < 30; ++i) {
             //     debug[i+1] = buffer[i];
@@ -174,10 +200,14 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
             parseCSI(buffer + 2, n - 2, &c, &key, &mods, NULL);
 
             if (c == '~') {
-                // Complicated.
-                // ...
-
-                return false;
+                // Mods & Key appear to be Backwards.
+                //  Fix Later...
+                if (key == 1 && mods == 3) {
+                    event->type = INPUT_DELETE;
+                    return true;
+                } else {
+                    return false;
+                }
             }
 
             if (c == 'u') {
