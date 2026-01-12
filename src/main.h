@@ -3,6 +3,7 @@
 //
 // Common Standard Includes.
 //
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -16,9 +17,7 @@
 //
 typedef struct editor Editor;
 
-typedef struct input_event InputEvent;
-
-typedef struct box Box;
+typedef struct rope Rope;
 
 typedef struct point Point;
 typedef struct buffer Buffer;
@@ -28,6 +27,10 @@ typedef struct ustack UStack;
 typedef struct array Array;
 typedef struct charbuffer CharBuffer;
 typedef struct intbuffer IntBuffer;
+
+typedef struct input_event InputEvent;
+
+typedef struct box Box;
 
 
 //
@@ -52,4 +55,5 @@ static inline int32_t ABS (int32_t a) {
 //
 // Defines.
 //
+#define NODE_CONTENT_SIZE 128
 #define HIST_LIMIT 1024
