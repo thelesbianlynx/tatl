@@ -67,42 +67,17 @@ void textbuffer_edit_move_lines (TextBuffer* buffer, int32_t i);
 
 
 
-void textbuffer_cursor_char (TextBuffer* buffer, int32_t i, bool s);
+void textbuffer_cursor_col (TextBuffer* buffer, int32_t i, bool s);
 
+void textbuffer_cursor_row (TextBuffer* buffer, int32_t i, bool s);
+
+void textbuffer_cursor_word (TextBuffer* buffer, int32_t i, bool s);
 
 void textbuffer_cursor_line (TextBuffer* buffer, int32_t i, bool s);
 
-void textbuffer_cursor_line_begin (TextBuffer* buffer, int32_t i, bool s);
-
-void textbuffer_cursor_line_end (TextBuffer* buffer, int32_t i, bool s);
-
 void textbuffer_cursor_paragraph (TextBuffer* buffer, int32_t i, bool s);
 
-
-void textbuffer_cursor_word_begin (TextBuffer* buffer, int32_t i, bool s);
-
-void textbuffer_cursor_word_end (TextBuffer* buffer, int32_t i, bool s);
-
-
 void textbuffer_cursor_goto (TextBuffer* buffer, int32_t row, int32_t col, bool s);
-
-
-
-void textbuffer_select_word (TextBuffer* buffer, int32_t i, bool a);
-
-void textbuffer_select_line (TextBuffer* buffer, int32_t i, bool a);
-
-
-void textbuffer_select_parens (TextBuffer* buffer, int32_t i, bool a);
-
-void textbuffer_select_brackets (TextBuffer* buffer, int32_t i, bool a);
-
-void textbuffer_select_braces (TextBuffer* buffer, int32_t i, bool a);
-
-void textbuffer_select_quotes (TextBuffer* buffer, int32_t i, bool a);
-
-void textbuffer_select_squotes (TextBuffer* buffer, int32_t i, bool a);
-
 
 
 void textbuffer_selection_clear (TextBuffer* buffer);
@@ -112,13 +87,19 @@ void textbuffer_selection_swap (TextBuffer* buffer);
 
 void textbuffer_selection_next (TextBuffer* buffer, int32_t i);
 
-void textbuffer_selection_next_word (TextBuffer* buffer, int32_t i);
-
-void textbuffer_selection_next_line (TextBuffer* buffer, int32_t i);
-
-
 void textbuffer_selection_add_next (TextBuffer* buffer, int32_t i);
+
+void textbuffer_selection_add_next_row (TextBuffer* buffer, int32_t i);
 
 void textbuffer_selection_add_next_word (TextBuffer* buffer, int32_t i);
 
 void textbuffer_selection_add_next_line (TextBuffer* buffer, int32_t i);
+
+
+void textbuffer_selection_split (TextBuffer* buffer, int32_t i);
+
+void textbuffer_selection_split_rows (TextBuffer* buffer, int32_t i);
+
+void textbuffer_selection_split_words (TextBuffer* buffer, int32_t i);
+
+void textbuffer_selection_split_lines (TextBuffer* buffer, int32_t i);

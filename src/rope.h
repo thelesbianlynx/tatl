@@ -28,7 +28,7 @@ uint32_t rope_len (Rope* rope);
 uint32_t rope_lines (Rope* rope);
 
 
-uint32_t rope_get_char (Rope* rope);
+uint32_t rope_get_char (Rope* rope, uint32_t i);
 
 
 Rope* rope_prefix (Rope* rope, uint32_t i);

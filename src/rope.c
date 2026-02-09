@@ -282,9 +282,17 @@ uint32_t rope_lines (Rope* rope) {
 // Get Character.
 //
 
-uint32_t rope_get_char (Rope* rope){
+static
+bool get_char_fn (uint32_t i, uint32_t ch, void* data) {
 
-    return 0;
+    *(uint32_t*) data = ch;
+    return false;
+}
+
+uint32_t rope_get_char (Rope* rope, uint32_t i){
+    uint32_t ch = 0;
+    rope_foreach_suffix(rope, i, get_char_fn, &ch);
+    return ch;
 }
 
 

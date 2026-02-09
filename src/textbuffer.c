@@ -364,7 +364,7 @@ uint32_t chartype (uint32_t ch) {
         return CHARTYPE_WS;
 
     // Text (Letters and Numbers).
-    if (('0' <= ch && ch <= '9') || ('A' <= ch && ch <= 'Z' ) || ('a' <= ch && ch <= 'z') || ch > 127)
+    if (('0' <= ch && ch <= '9') || ('A' <= ch && ch <= 'Z' ) || ('a' <= ch && ch <= 'z') || ch == '_' || ch > 127)
         return CHARTYPE_TEXT;
 
     // Symbol (The rest).
@@ -466,7 +466,9 @@ void textbuffer_edit_backspace_lines (TextBuffer* buffer, int32_t i) {
 // Cursor Movement.
 //
 
-void textbuffer_cursor_char (TextBuffer* buffer, int32_t i, bool s) {
+// - Cursor by Row/Column - //
+
+void textbuffer_cursor_col (TextBuffer* buffer, int32_t i, bool s) {
     action_end(buffer);
 
     for (int x = 0; x < buffer->selections->size; x++) {
@@ -479,7 +481,7 @@ void textbuffer_cursor_char (TextBuffer* buffer, int32_t i, bool s) {
     }
 }
 
-void textbuffer_cursor_line (TextBuffer* buffer, int32_t i, bool s) {
+void textbuffer_cursor_row (TextBuffer* buffer, int32_t i, bool s) {
     action_end(buffer);
 
     for (int x = 0; x < buffer->selections->size; x++) {
@@ -490,23 +492,76 @@ void textbuffer_cursor_line (TextBuffer* buffer, int32_t i, bool s) {
     }
 }
 
-void textbuffer_cursor_line_begin (TextBuffer* buffer, int32_t i, bool s) {
+// - Cursor by Word Boundary - //
+
+struct by_word_data{
+    uint32_t chtype;
+    uint32_t index;
+};
+
+static
+bool by_word (uint32_t i, uint32_t ch, void* d) {
+    struct by_word_data* data = d;
+    data->index = i;
+    if (chartype(ch) == data->chtype) {
+        return true;
+    }
+    return false;
+}
+static
+bool by_word_reverse (uint32_t i, uint32_t ch, void* d) {
+    struct by_word_data* data = d;
+    if (chartype(ch) == data->chtype) {
+        data->index = i;
+        return true;
+    }
+    return false;
+}
+
+void textbuffer_cursor_word (TextBuffer* buffer, int32_t i, bool s) {
+    action_end(buffer);
+
+    for (int x = 0; x < buffer->selections->size; x++) {
+        Selection* sel = buffer->selections->data[x];
+
+        // Forwards.
+        while (i > 0) {
+            uint32_t start = sel->cursor + 1;
+            struct by_word_data data = {
+                .chtype = chartype(rope_get_char(buffer->text, start)),
+                .index = start,
+            };
+            rope_foreach_suffix(buffer->text, start, by_word, &data);
+            sel->cursor = data.index;
+            i--;
+        }
+
+        // Backwards.
+        while (i < 0) {
+            uint32_t start = MAX(0, sel->cursor - 2);
+            struct by_word_data data = {
+                .chtype = chartype(rope_get_char(buffer->text, start)),
+                .index = start,
+            };
+            rope_foreach_reverse_prefix(buffer->text, start, by_word_reverse, &data);
+            sel->cursor = data.index;
+            i++;
+        }
+
+        if (!s) sel->anchor = sel->cursor;
+        sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
+    }
+}
+
+// - Cursor by Line Boundary - //
+
+void textbuffer_cursor_line (TextBuffer* buffer, int32_t i, bool s) {
 
 }
 
-void textbuffer_cursor_line_end (TextBuffer* buffer, int32_t i, bool s) {
-
-}
+// - Other Cursor Movement - //
 
 void textbuffer_cursor_paragraph (TextBuffer* buffer, int32_t i, bool s) {
-
-}
-
-void textbuffer_cursor_word_begin (TextBuffer* buffer, int32_t i, bool s) {
-
-}
-
-void textbuffer_cursor_word_end (TextBuffer* buffer, int32_t i, bool s) {
 
 }
 

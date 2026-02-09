@@ -91,31 +91,44 @@ int main (int argc, char** argv) {
         if (has_event) {
             if (event.type == INPUT_ESC) break;
             switch (event.type) {
-                // Cursor-Char
+                // Cursor-Column
                 case INPUT_RIGHT:
-                    textbuffer_cursor_char(buffer, 1, false);
+                    textbuffer_cursor_col(buffer, 1, false);
                     break;
                 case INPUT_LEFT:
-                    textbuffer_cursor_char(buffer, -1, false);
+                    textbuffer_cursor_col(buffer, -1, false);
                     break;
                 case INPUT_SHIFT_RIGHT:
-                    textbuffer_cursor_char(buffer, 1, true);
+                    textbuffer_cursor_col(buffer, 1, true);
                     break;
                 case INPUT_SHIFT_LEFT:
-                    textbuffer_cursor_char(buffer, -1, true);
+                    textbuffer_cursor_col(buffer, -1, true);
                     break;
-                // Cursor-Line
+                // Cursor-Row
                 case INPUT_UP:
-                    textbuffer_cursor_line(buffer, -1, false);
+                    textbuffer_cursor_row(buffer, -1, false);
                     break;
                 case INPUT_DOWN:
-                    textbuffer_cursor_line(buffer, 1, false);
+                    textbuffer_cursor_row(buffer, 1, false);
                     break;
                 case INPUT_SHIFT_UP:
-                    textbuffer_cursor_line(buffer, -1, true);
+                    textbuffer_cursor_row(buffer, -1, true);
                     break;
                 case INPUT_SHIFT_DOWN:
-                    textbuffer_cursor_line(buffer, 1, true);
+                    textbuffer_cursor_row(buffer, 1, true);
+                    break;
+                // Cursor-Word.
+                case INPUT_CTRL_RIGHT:
+                    textbuffer_cursor_word(buffer, 1, false);
+                    break;
+                case INPUT_CTRL_LEFT:
+                    textbuffer_cursor_word(buffer, -1, false);
+                    break;
+                case INPUT_SHIFT_CTRL_RIGHT:
+                    textbuffer_cursor_word(buffer, 1, true);
+                    break;
+                case INPUT_SHIFT_CTRL_LEFT:
+                    textbuffer_cursor_word(buffer, -1, true);
                     break;
                 // Edit-Char
                 case INPUT_CHAR:
