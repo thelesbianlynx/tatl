@@ -53,5 +53,13 @@ void rope_foreach_suffix (Rope* rope, uint32_t i, rope_foreach_fn fn, void* data
 
 void rope_foreach_substr (Rope* rope, uint32_t i, uint32_t j, rope_foreach_fn fn, void* data);
 
+void rope_foreach_reverse (Rope* rope, rope_foreach_fn fn, void* data);
+
+void rope_foreach_reverse_prefix (Rope* rope, uint32_t i, rope_foreach_fn fn, void* data);
+
+void rope_foreach_reverse_suffix (Rope* rope, uint32_t i, rope_foreach_fn fn, void* data);
+
+void rope_foreach_reverse_substr (Rope* rope, uint32_t i, uint32_t j, rope_foreach_fn fn, void* data);
+
 
 void rope_print (Rope* rope);

@@ -791,6 +791,26 @@ bool node_foreach (Node* node, uint32_t i, uint32_t j, uint32_t offset, rope_for
     return true;
 }
 
+static
+bool node_foreach_reverse (Node* node, uint32_t i, uint32_t j, uint32_t offset, rope_foreach_fn fn, void* data) {
+    if (node->type == NODE_CONTENT) {
+        for (int x = j >= offset ? node->len - 1 : node->len - (offset - j) - 1; x >= 0 && offset - (node->len - x) >= i; x--) {
+            if (!fn(offset - (node->len - x), node->content->chars[x], data)) return false;
+        }
+    } else if (node->type == NODE_INTERNAL) {
+        for (int x = node->count - 1; x >= 0; x--) {
+            if (j >= offset - node->child[x]->len) {
+                if (!node_foreach_reverse(node->child[x], i, j, offset, fn, data)) {
+                    return false;
+                }
+            }
+            offset -= node->child[x]->len;
+            if (offset < i) return false;
+        }
+    }
+    return true;
+}
+
 void rope_foreach (Rope* rope, rope_foreach_fn fn, void* data) {
     if (rope->node != NULL) node_foreach(rope->node, 0, rope->node->len, 0, fn, data);
 }
@@ -807,6 +827,22 @@ void rope_foreach_substr (Rope* rope, uint32_t i, uint32_t j, rope_foreach_fn fn
     if (rope->node != NULL) node_foreach(rope->node, i, j, 0, fn, data);
 }
 
+
+void rope_foreach_reverse (Rope* rope, rope_foreach_fn fn, void* data) {
+    if (rope->node != NULL) node_foreach_reverse(rope->node, 0, rope->node->len, rope->node->len, fn, data);
+}
+
+void rope_foreach_reverse_prefix (Rope* rope, uint32_t i, rope_foreach_fn fn, void* data) {
+    if (rope->node != NULL) node_foreach_reverse(rope->node, 0, i, rope->node->len, fn, data);
+}
+
+void rope_foreach_reverse_suffix (Rope* rope, uint32_t i, rope_foreach_fn fn, void* data) {
+    if (rope->node != NULL) node_foreach_reverse(rope->node, i, rope->node->len, rope->node->len, fn, data);
+}
+
+void rope_foreach_reverse_substr (Rope* rope, uint32_t i, uint32_t j, rope_foreach_fn fn, void* data) {
+    if (rope->node != NULL) node_foreach_reverse(rope->node, i, j, rope->node->len, fn, data);
+}
 
 //
 // Printing.
