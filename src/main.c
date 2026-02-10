@@ -168,6 +168,12 @@ int main (int argc, char** argv) {
                     } else if (event.charcode == 17) {
                         // CTRL-Q - Quit.
                         exit = true;
+                    } else if (event.charcode == 4) {
+                        // CTRL-D - DUP.
+                        textbuffer_edit_duplicate(buffer, 1);
+                    } else if (event.charcode == 5) {
+                        // CTRL-E - DUP Lines.
+                        textbuffer_edit_duplicate_lines(buffer, 1);
                     }
                     break;
                 // Edit-Newline

@@ -63,6 +63,10 @@ void textbuffer_edit_backspace (TextBuffer* buffer, int32_t i);
 void textbuffer_edit_backspace_lines (TextBuffer* buffer, int32_t i);
 
 
+void textbuffer_edit_duplicate (TextBuffer* buffer, int32_t i);
+
+void textbuffer_edit_duplicate_lines (TextBuffer* buffer, int32_t i);
+
 void textbuffer_edit_move_lines (TextBuffer* buffer, int32_t i);
 
 

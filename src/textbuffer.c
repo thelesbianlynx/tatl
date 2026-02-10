@@ -464,6 +464,43 @@ void textbuffer_edit_backspace_lines (TextBuffer* buffer, int32_t i) {
 
 }
 
+// - Other Actions - //
+
+void textbuffer_edit_duplicate (TextBuffer* buffer, int32_t i) {
+    action_begin(buffer, ACTION_EDIT);
+
+    for (int x = 0; x < buffer->selections->size; x++) {
+        Selection* sel = buffer->selections->data[x];
+        Rope* text = rope_substr(buffer->text, head(sel), tail(sel));
+        textbuffer_edit(buffer, head(sel), head(sel), text);
+    }
+
+    // Atomic Action.
+    action_end(buffer);
+}
+
+void textbuffer_edit_duplicate_lines (TextBuffer* buffer, int32_t i) {
+    action_begin(buffer, ACTION_EDIT);
+
+    for (int x = 0; x < buffer->selections->size; x++) {
+        Selection* sel = buffer->selections->data[x];
+        Point phead = rope_index_to_point(buffer->text, head(sel));
+        Point ptail = rope_index_to_point(buffer->text, tail(sel));
+        int32_t head = rope_point_to_index(buffer->text, (Point) {phead.row, 0});
+        int32_t tail = rope_point_to_index(buffer->text, (Point) {ptail.row + 1, 0});
+
+        Rope* text = rope_substr(buffer->text, head, tail);
+        textbuffer_edit(buffer, head, head, text);
+    }
+
+    // Atomic Action.
+    action_end(buffer);
+}
+
+void textbuffer_edit_move_lines (TextBuffer* buffer, int32_t i) {
+
+}
+
 //
 // Cursor Movement.
 //
