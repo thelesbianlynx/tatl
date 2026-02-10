@@ -205,6 +205,18 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
                 if (key == 1 && mods == 3) {
                     event->type = INPUT_DELETE;
                     return true;
+                } else if (key == 1 && mods == 1) {
+                    event->type = INPUT_HOME;
+                    return true;
+                } else if (key == 1 && mods == 4) {
+                    event->type = INPUT_END;
+                    return true;
+                } else if (key == 2 && mods == 1) {
+                    event->type = INPUT_SHIFT_HOME;
+                    return true;
+                } else if (key == 2 && mods == 4) {
+                    event->type = INPUT_SHIFT_END;
+                    return true;
                 } else {
                     return false;
                 }
@@ -301,6 +313,10 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
                     event->type = INPUT_SHIFT_LEFT;
                 } else if (c == 'C') {
                     event->type = INPUT_SHIFT_RIGHT;
+                } else if (c == 'H') {
+                    event->type = INPUT_SHIFT_HOME;
+                } else if (c == 'F') {
+                    event->type = INPUT_SHIFT_END;
                 } else {
                     return false;
                 }
@@ -315,6 +331,10 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
                 event->type = INPUT_LEFT;
             } else if (c == 'C') {
                 event->type = INPUT_RIGHT;
+            } else if (c == 'H') {
+                event->type = INPUT_HOME;
+            } else if (c == 'F') {
+                event->type = INPUT_END;
             } else if (c == 'Z') {
                 event->type = INPUT_SHIFT_TAB;
             } else {

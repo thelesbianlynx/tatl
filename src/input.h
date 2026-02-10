@@ -54,6 +54,9 @@ enum input_event_type {
 
     INPUT_HOME,
     INPUT_END,
+    
+    INPUT_SHIFT_HOME,
+    INPUT_SHIFT_END,
 
     INPUT_PGUP,
     INPUT_PGDOWN,

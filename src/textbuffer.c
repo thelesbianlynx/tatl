@@ -383,6 +383,7 @@ void textbuffer_edit_char (TextBuffer* buffer, uint32_t ch, int32_t i) {
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
         textbuffer_edit(buffer, head(sel), tail(sel), text);
+        sel->anchor = sel->cursor;
     }
 
     rope_destroy(text);
@@ -397,6 +398,7 @@ void textbuffer_edit_text (TextBuffer* buffer, Rope* text, int32_t i) {
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
         textbuffer_edit(buffer, head(sel), tail(sel), text);
+        //sel->anchor = sel->cursor;
     }
 
     // Atomic Action.
@@ -523,29 +525,30 @@ void textbuffer_cursor_word (TextBuffer* buffer, int32_t i, bool s) {
 
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
+        int32_t n = i;
 
         // Forwards.
-        while (i > 0) {
-            uint32_t start = sel->cursor + 1;
+        while (n > 0) {
+            int32_t start = sel->cursor + 1;
             struct by_word_data data = {
                 .chtype = chartype(rope_get_char(buffer->text, start)),
                 .index = start,
             };
             rope_foreach_suffix(buffer->text, start, by_word, &data);
             sel->cursor = data.index;
-            i--;
+            n--;
         }
 
         // Backwards.
-        while (i < 0) {
-            uint32_t start = MAX(0, sel->cursor - 2);
+        while (n < 0) {
+            int32_t start = MAX(0, sel->cursor - 2);
             struct by_word_data data = {
                 .chtype = chartype(rope_get_char(buffer->text, start)),
                 .index = start,
             };
             rope_foreach_reverse_prefix(buffer->text, start, by_word_reverse, &data);
             sel->cursor = data.index;
-            i++;
+            n++;
         }
 
         if (!s) sel->anchor = sel->cursor;
@@ -556,7 +559,31 @@ void textbuffer_cursor_word (TextBuffer* buffer, int32_t i, bool s) {
 // - Cursor by Line Boundary - //
 
 void textbuffer_cursor_line (TextBuffer* buffer, int32_t i, bool s) {
+    action_end(buffer);
 
+    for (int x = 0; x < buffer->selections->size; x++) {
+        Selection* sel = buffer->selections->data[x];
+        int32_t n = i;
+
+        // Forwards.
+        while (n > 0) {
+            int32_t start = sel->cursor + 1;
+            Point p = rope_index_to_point(buffer->text, start);
+            sel->cursor = MAX(0, rope_point_to_index(buffer->text, (Point) {p.row + 1, 0}) - 1);
+            n--;
+        }
+
+        // Backwards.
+        while (i < 0) {
+            uint32_t start = MAX(0, sel->cursor - 1);
+            Point p = rope_index_to_point(buffer->text, start);
+            sel->cursor = rope_point_to_index(buffer->text, (Point) {p.row, 0});
+            n++;
+        }
+
+        if (!s) sel->anchor = sel->cursor;
+        sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
+    }
 }
 
 // - Other Cursor Movement - //
@@ -566,5 +593,83 @@ void textbuffer_cursor_paragraph (TextBuffer* buffer, int32_t i, bool s) {
 }
 
 void textbuffer_cursor_goto (TextBuffer* buffer, int32_t row, int32_t col, bool s) {
+    action_end(buffer);
 
+    // Clear selection list except the primary selection.
+    Selection* sel = selection_array_clear(buffer->selections);
+    array_add(buffer->selections, sel);
+
+    sel->cursor = rope_point_to_index(buffer->text, (Point){row, col});
+    if (!s) sel->anchor = sel->cursor;
+    sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
 }
+
+//
+// Selection Operations.
+//
+
+// - Basic Operations - //
+
+void textbuffer_selection_clear (TextBuffer* buffer) {
+    action_end(buffer);
+
+    if (selection_array_max_len(buffer->selections) > 0) {
+        // Remove Selection Region from all cursors.
+        for (int x = 0; x < buffer->selections->size; x++) {
+            Selection* sel = buffer->selections->data[x];
+            sel->anchor = sel->cursor;
+        }
+    } else {
+        // Clear selection list except the primary selection.
+        Selection* sel = selection_array_clear(buffer->selections);
+        array_add(buffer->selections, sel);
+    }
+}
+
+void textbuffer_selection_swap (TextBuffer* buffer);
+
+// - Search-for-Match Operations - //
+
+void textbuffer_selection_next (TextBuffer* buffer, int32_t i);
+
+void textbuffer_selection_add_next (TextBuffer* buffer, int32_t i);
+
+// - Multi-Cursor Operations - //
+
+void textbuffer_selection_add_next_row (TextBuffer* buffer, int32_t i) {
+    action_end(buffer);
+
+    while (i > 0) {
+        Selection* sel = array_peek(buffer->selections);
+
+        Point p = rope_index_to_point(buffer->text, sel->cursor);
+        if (p.row >= rope_lines(buffer->text) - 1) break;
+        int32_t index = rope_point_to_index(buffer->text, (Point){p.row + 1, p.col});
+
+        Selection* new = selection_create();
+        new->anchor = new->cursor = index;
+        new->col_mem = sel->col_mem;
+        array_add(buffer->selections, new);
+
+        i--;
+    }
+
+    // Backwards.
+    while (i < 0) {
+        Selection* sel = buffer->selections->data[0];
+        Point p = rope_index_to_point(buffer->text, sel->cursor);
+        if (p.row <= 0) break;
+        int32_t index = rope_point_to_index(buffer->text, (Point){p.row - 1, p.col});
+
+        Selection* new = selection_create();
+        new->anchor = new->cursor = index;
+        new->col_mem = sel->col_mem;
+        array_insert(buffer->selections, 0, new);
+
+        i++;
+    }
+}
+
+void textbuffer_selection_add_next_word (TextBuffer* buffer, int32_t i);
+
+void textbuffer_selection_add_next_line (TextBuffer* buffer, int32_t i);

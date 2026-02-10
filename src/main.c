@@ -85,11 +85,12 @@ int main (int argc, char** argv) {
     struct winsize size;
     int width = 0, height = 0;
 
-    for (;;) {
+    bool exit = false;
+    while (!exit) {
         int32_t debug[32] = {0};
         bool has_event = nextkey(10, &event, debug);
         if (has_event) {
-            if (event.type == INPUT_ESC) break;
+
             switch (event.type) {
                 // Cursor-Column
                 case INPUT_RIGHT:
@@ -130,6 +131,30 @@ int main (int argc, char** argv) {
                 case INPUT_SHIFT_CTRL_LEFT:
                     textbuffer_cursor_word(buffer, -1, true);
                     break;
+                // Cursor-Line.
+                case INPUT_HOME:
+                    textbuffer_cursor_line(buffer, -1, false);
+                    break;
+                case INPUT_END:
+                    textbuffer_cursor_line(buffer, 1, false);
+                    break;
+                case INPUT_SHIFT_HOME:
+                    textbuffer_cursor_line(buffer, -1, true);
+                    break;
+                case INPUT_SHIFT_END:
+                    textbuffer_cursor_line(buffer, 1, true);
+                    break;
+                // Selection Options.
+                case INPUT_ESC:
+                    textbuffer_selection_clear(buffer);
+                    break;
+                // Multi-Cursor.
+                case INPUT_SHIFT_CTRL_UP:
+                    textbuffer_selection_add_next_row(buffer, -1);
+                    break;
+                case INPUT_SHIFT_CTRL_DOWN:
+                    textbuffer_selection_add_next_row(buffer, 1);
+                    break;
                 // Edit-Char
                 case INPUT_CHAR:
                     if (event.charcode >= ' ') {
@@ -140,6 +165,9 @@ int main (int argc, char** argv) {
                     } else if (event.charcode == 25) {
                         // CTRL-Y - Redo.
                         textbuffer_redo(buffer);
+                    } else if (event.charcode == 17) {
+                        // CTRL-Q - Quit.
+                        exit = true;
                     }
                     break;
                 // Edit-Newline
