@@ -411,11 +411,99 @@ void textbuffer_edit_newline (TextBuffer* buffer, int32_t i) {
 }
 
 void textbuffer_edit_tab (TextBuffer* buffer, int32_t i) {
+    if (i < 0 || selection_array_max_len(buffer->selections) > 0) {
+        // Indentation.
+        textbuffer_edit_indent(buffer, i);
+    } else {
+        // Insert tab or number of spaces.
+        if (buffer->hard_tabs) {
+            textbuffer_edit_char(buffer, '\t', i);
+        } else {
+            action_begin(buffer, ACTION_CHAR0);
+            while (i > 0) {
+                for (int x = 0; x < buffer->selections->size; x++) {
+                    Selection* sel = buffer->selections->data[x];
+                    Point p = rope_index_to_point(buffer->text, sel->cursor);
+                    int spaces = buffer->tab_width - MOD(p.col, buffer->tab_width);
+                    IntBuffer* sp_buf = intbuffer_create();
+                    for (int y = 0; y < spaces; y++)
+                        intbuffer_put_char(sp_buf, sp_buf->size, ' ');
+                    Rope* text = rope_create(sp_buf);
+                    intbuffer_destroy(sp_buf);
+                    textbuffer_edit(buffer, sel->cursor, sel->cursor, text);
+                    rope_destroy(text);
+                }
+                i--;
+            }
+        }
+    }
+}
 
+static
+Rope* get_indent_text (TextBuffer* buffer) {
+    IntBuffer* buf = intbuffer_create();
+    if (buffer->hard_tabs) {
+        intbuffer_put_char(buf, 0, '\t');
+    } else {
+        for (int y = 0; y < buffer->tab_width; y++)
+            intbuffer_put_char(buf, buf->size, ' ');
+    }
+    Rope* text = rope_create(buf);
+    intbuffer_destroy(buf);
+    return text;
+}
+
+static
+bool get_unindent_width (uint32_t i, uint32_t ch, void* data) {
+    if (ch == ' ') {
+        (*(int32_t*) data)++;
+        return true;
+    } else {
+        return false;
+    }
 }
 
 void textbuffer_edit_indent (TextBuffer* buffer, int32_t i) {
+    action_begin(buffer, i > 0 ? ACTION_INDENT : ACTION_UNINDENT);
 
+    // Indent.
+    while (i > 0) {
+        Rope* text = get_indent_text(buffer);
+        for (int x = 0; x < buffer->selections->size; x++) {
+            Selection* sel = buffer->selections->data[x];
+            Point phead = rope_index_to_point(buffer->text, head(sel));
+            Point ptail = rope_index_to_point(buffer->text, tail(sel));
+            for (int32_t line = phead.row; line <= ptail.row; line++) {
+                int32_t dst = rope_point_to_index(buffer->text, (Point){line, 0});
+                textbuffer_edit(buffer, dst, dst, text);
+            }
+        }
+        rope_destroy(text);
+        i--;
+    }
+
+    // Unindent.
+    while (i < 0) {
+        for (int x = 0; x < buffer->selections->size; x++) {
+            Selection* sel = buffer->selections->data[x];
+            Point phead = rope_index_to_point(buffer->text, head(sel));
+            Point ptail = rope_index_to_point(buffer->text, tail(sel));
+            for (int32_t line = phead.row; line <= ptail.row; line++) {
+                int32_t start = rope_point_to_index(buffer->text, (Point){line, 0});
+                int32_t len = 0;
+                if (rope_get_char(buffer->text, start) == '\t') {
+                    len = 1;
+                } else {
+                    rope_foreach_substr(buffer->text, start, start + buffer->tab_width, get_unindent_width, &len);
+                }
+                textbuffer_edit(buffer, start, start + len, NULL);
+            }
+        }
+        i++;
+    }
+
+    // Continuous action.
+    // No Action-End.
 }
 
 // -- Delete Actions -- //

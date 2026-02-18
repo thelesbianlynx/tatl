@@ -198,6 +198,12 @@ int main (int argc, char** argv) {
                 case INPUT_BACKSPACE:
                     textbuffer_edit_backspace(buffer, 1);
                     break;
+                case INPUT_TAB:
+                    textbuffer_edit_tab(buffer, 1);
+                    break;
+                case INPUT_SHIFT_TAB:
+                    textbuffer_edit_indent(buffer, -1);
+                    break;
             }
         }
 
