@@ -439,7 +439,19 @@ void textbuffer_edit_delete (TextBuffer* buffer, int32_t i) {
 }
 
 void textbuffer_edit_delete_lines (TextBuffer* buffer, int32_t i) {
+    action_begin(buffer, ACTION_DELETE_LINES);
+    for (int x = 0; x < buffer->selections->size; x++) {
+        Selection* sel = buffer->selections->data[x];
+        Point phead = rope_index_to_point(buffer->text, head(sel));
+        Point ptail = rope_index_to_point(buffer->text, tail(sel));
+        int32_t head = rope_point_to_index(buffer->text, (Point) {phead.row, 0});
+        int32_t tail = rope_point_to_index(buffer->text, (Point) {ptail.row + 1, 0});
 
+        textbuffer_edit(buffer, head, tail, NULL);
+    }
+
+    // Continuous Action.
+    // No Action End.
 }
 
 void textbuffer_edit_backspace (TextBuffer* buffer, int32_t i) {
@@ -498,7 +510,58 @@ void textbuffer_edit_duplicate_lines (TextBuffer* buffer, int32_t i) {
 }
 
 void textbuffer_edit_move_lines (TextBuffer* buffer, int32_t i) {
+    action_begin(buffer, ACTION_MOVE_LINES);
 
+    // Move lines down.
+    while (i > 0) {
+        int32_t top = rope_lines(buffer->text);
+        int32_t bot = 0;
+        for (int x = 0; x < buffer->selections->size; x++) {
+            Selection* sel = buffer->selections->data[x];
+            Point phead = rope_index_to_point(buffer->text, head(sel));
+            Point ptail = rope_index_to_point(buffer->text, tail(sel));
+            top = MIN(phead.row, top);
+            bot = MAX(ptail.row, bot);
+        }
+
+        if (bot >= rope_lines(buffer->text)) break;
+
+        int32_t head = rope_point_to_index(buffer->text, (Point) {bot + 1, 0});
+        int32_t tail = rope_point_to_index(buffer->text, (Point) {bot + 2, 0});
+        Rope* line = rope_substr(buffer->text, head, tail);
+        textbuffer_edit(buffer, head, tail, NULL);
+
+        int32_t dst = rope_point_to_index(buffer->text, (Point) {top, 0});
+        textbuffer_edit(buffer, dst, dst, line);
+        i--;
+    }
+
+    // Move lines up.
+    while (i < 0) {
+        int32_t top = rope_lines(buffer->text);
+        int32_t bot = 0;
+        for (int x = 0; x < buffer->selections->size; x++) {
+            Selection* sel = buffer->selections->data[x];
+            Point phead = rope_index_to_point(buffer->text, head(sel));
+            Point ptail = rope_index_to_point(buffer->text, tail(sel));
+            top = MIN(phead.row, top);
+            bot = MAX(ptail.row, bot);
+        }
+
+        if (bot <= 0) break;
+
+        int32_t head = rope_point_to_index(buffer->text, (Point) {top - 1, 0});
+        int32_t tail = rope_point_to_index(buffer->text, (Point) {top, 0});
+        Rope* line = rope_substr(buffer->text, head, tail);
+        textbuffer_edit(buffer, head, tail, NULL);
+
+        int32_t dst = rope_point_to_index(buffer->text, (Point) {bot, 0});
+        textbuffer_edit(buffer, dst, dst, line);
+        i++;
+    }
+
+    // Continuous Action.
+    // No Action-End.
 }
 
 //
@@ -663,13 +726,19 @@ void textbuffer_selection_clear (TextBuffer* buffer) {
     }
 }
 
-void textbuffer_selection_swap (TextBuffer* buffer);
+void textbuffer_selection_swap (TextBuffer* buffer) {
+
+}
 
 // - Search-for-Match Operations - //
 
-void textbuffer_selection_next (TextBuffer* buffer, int32_t i);
+void textbuffer_selection_next (TextBuffer* buffer, int32_t i) {
 
-void textbuffer_selection_add_next (TextBuffer* buffer, int32_t i);
+}
+
+void textbuffer_selection_add_next (TextBuffer* buffer, int32_t i) {
+
+}
 
 // - Multi-Cursor Operations - //
 
@@ -707,6 +776,10 @@ void textbuffer_selection_add_next_row (TextBuffer* buffer, int32_t i) {
     }
 }
 
-void textbuffer_selection_add_next_word (TextBuffer* buffer, int32_t i);
+void textbuffer_selection_add_next_word (TextBuffer* buffer, int32_t i) {
 
-void textbuffer_selection_add_next_line (TextBuffer* buffer, int32_t i);
+}
+
+void textbuffer_selection_add_next_line (TextBuffer* buffer, int32_t i) {
+
+}

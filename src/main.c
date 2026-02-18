@@ -148,6 +148,13 @@ int main (int argc, char** argv) {
                 case INPUT_ESC:
                     textbuffer_selection_clear(buffer);
                     break;
+                // Move Lines.
+                case INPUT_CTRL_UP:
+                    textbuffer_edit_move_lines(buffer, -1);
+                    break;
+                case INPUT_CTRL_DOWN:
+                    textbuffer_edit_move_lines(buffer, 1);
+                    break;
                 // Multi-Cursor.
                 case INPUT_SHIFT_CTRL_UP:
                     textbuffer_selection_add_next_row(buffer, -1);
@@ -159,21 +166,24 @@ int main (int argc, char** argv) {
                 case INPUT_CHAR:
                     if (event.charcode >= ' ') {
                         textbuffer_edit_char(buffer, event.charcode, 1);
+                    } else if (event.charcode == 17) {
+                        // CTRL-Q - Quit.
+                        exit = true;
                     } else if (event.charcode == 26) {
                         // CTRL-Z - Undo.
                         textbuffer_undo(buffer);
                     } else if (event.charcode == 25) {
                         // CTRL-Y - Redo.
                         textbuffer_redo(buffer);
-                    } else if (event.charcode == 17) {
-                        // CTRL-Q - Quit.
-                        exit = true;
                     } else if (event.charcode == 4) {
                         // CTRL-D - DUP.
                         textbuffer_edit_duplicate(buffer, 1);
                     } else if (event.charcode == 5) {
                         // CTRL-E - DUP Lines.
                         textbuffer_edit_duplicate_lines(buffer, 1);
+                    } else if (event.charcode == 7) {
+                        // CTRL-G - Delete Lines.
+                        textbuffer_edit_delete_lines(buffer, 1);
                     }
                     break;
                 // Edit-Newline
