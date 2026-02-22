@@ -141,31 +141,6 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
         }
 
         if (n >= 3 && buffer[0] == '\e' && buffer[1] == '[') {
-            #ifdef TATL_DEPRECATED
-            if (buffer[2] == 'M' && n >= 6) {
-                // Mouse Event.
-                event->type = INPUT_MOUSE;
-                event->charcode = buffer[3] - 32;
-                event->x = (uint8_t) buffer[4] - 32;
-                event->y = (uint8_t) buffer[5] - 32;
-                return true;
-            }
-
-            if (buffer[2] == '<') {
-                // SGR-Mouse Event.
-                char c;
-                uint32_t x, y, button;
-                parseCSI(buffer + 3, n - 3, &c, &x, &y, &button);
-                if (c != 'm') {
-                    event->type = INPUT_MOUSE;
-                    event->charcode = button;
-                    event->x = x;
-                    event->y = y;
-                    return true;
-                }
-                return false;
-            }
-            #else
             if (buffer[2] == 'M' && n >= 6) {
                 // Mouse Event.
                 event->type = INPUT_MOUSE;
@@ -189,7 +164,6 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
                 }
                 return false;
             }
-            #endif
 
             // for (int i = 0; i < n && i < 30; ++i) {
             //     debug[i+1] = buffer[i];

@@ -34,39 +34,9 @@ int main (int argc, char** argv) {
     //
     output_init();
 
-    #ifdef TATL_DEPRECATED
-
-    struct editor editor;
-    editor_init(&editor, filenames);
-
-    InputEvent event;
-
-    struct winsize size;
-    int width = 0, height = 0;
-
-    for (;;) {
-        int32_t debug[32] = {0};
-        bool has_event = nextkey(10, &event, debug);
-        if (has_event) {
-            bool running = editor_update(&editor, &event);
-            if (!running) break;
-        }
-
-        if (ioctl(0, TIOCGWINSZ, &size) == 0) {
-            width = size.ws_col;
-            height = size.ws_row;
-        }
-
-        editor_draw(&editor, width, height, debug);
-    }
-
-    editor_fini(&editor);
-
-    #else
-
     CharBuffer* chars = charbuffer_create();
 
-    FILE* f = fopen("src/buffer.c", "r");
+    FILE* f = fopen("src/textbuffer.c", "r");
     charbuffer_read(chars, f);
     fclose(f);
 
@@ -220,8 +190,6 @@ int main (int argc, char** argv) {
 
     textview_destroy(view);
     textbuffer_destroy(buffer);
-
-    #endif
 
     array_destroy(filenames);
 

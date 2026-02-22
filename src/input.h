@@ -54,7 +54,7 @@ enum input_event_type {
 
     INPUT_HOME,
     INPUT_END,
-    
+
     INPUT_SHIFT_HOME,
     INPUT_SHIFT_END,
 
@@ -80,13 +80,7 @@ enum input_event_type {
     INPUT_MOUSE,
 };
 
-#ifdef TATL_DEPRECATED
-struct input_event {
-    uint32_t type;
-    uint32_t charcode;
-    uint32_t x, y;
-};
-#else
+
 struct mouse_event {
     uint32_t button;
     uint32_t x, y;
@@ -99,6 +93,5 @@ struct input_event {
         MouseEvent m_event;
     };
 };
-#endif
 
 bool nextkey (int32_t timeout, InputEvent* r_inputstate, int32_t* debug);
