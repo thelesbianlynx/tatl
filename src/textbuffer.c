@@ -762,7 +762,7 @@ void textbuffer_cursor_line (TextBuffer* buffer, int32_t i, bool s) {
         }
 
         // Backwards.
-        while (i < 0) {
+        while (n < 0) {
             uint32_t start = MAX(0, sel->cursor - 1);
             Point p = rope_index_to_point(buffer->text, start);
             sel->cursor = rope_point_to_index(buffer->text, (Point) {p.row, 0});

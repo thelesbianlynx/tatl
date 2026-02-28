@@ -1,6 +1,7 @@
 #include "main.h"
 
 #include <sys/ioctl.h>
+#undef CTRL
 
 #include "array.h"
 #include "input.h"
@@ -12,7 +13,7 @@
 #include "rope.h"
 #include "textbuffer.h"
 #include "textview.h"
-
+#include "textaction.h"
 
 int main (int argc, char** argv) {
     //
@@ -34,6 +35,9 @@ int main (int argc, char** argv) {
     //
     output_init();
 
+    Editor editor;
+    editor_init(&editor);
+
     CharBuffer* chars = charbuffer_create();
 
     FILE* f = fopen("src/textbuffer.c", "r");
@@ -50,7 +54,7 @@ int main (int argc, char** argv) {
     TextBuffer* buffer = textbuffer_create(rope);
     TextView* view = textview_create(buffer);
 
-    InputEvent event;
+    InputEvent event = {};
 
     struct winsize size;
     int width = 0, height = 0;
@@ -61,120 +65,19 @@ int main (int argc, char** argv) {
         bool has_event = nextkey(10, &event, debug);
         if (has_event) {
 
-            switch (event.type) {
-                // Cursor-Column
-                case INPUT_RIGHT:
-                    textbuffer_cursor_col(buffer, 1, false);
-                    break;
-                case INPUT_LEFT:
-                    textbuffer_cursor_col(buffer, -1, false);
-                    break;
-                case INPUT_SHIFT_RIGHT:
-                    textbuffer_cursor_col(buffer, 1, true);
-                    break;
-                case INPUT_SHIFT_LEFT:
-                    textbuffer_cursor_col(buffer, -1, true);
-                    break;
-                // Cursor-Row
-                case INPUT_UP:
-                    textbuffer_cursor_row(buffer, -1, false);
-                    break;
-                case INPUT_DOWN:
-                    textbuffer_cursor_row(buffer, 1, false);
-                    break;
-                case INPUT_SHIFT_UP:
-                    textbuffer_cursor_row(buffer, -1, true);
-                    break;
-                case INPUT_SHIFT_DOWN:
-                    textbuffer_cursor_row(buffer, 1, true);
-                    break;
-                // Cursor-Word.
-                case INPUT_CTRL_RIGHT:
-                    textbuffer_cursor_word(buffer, 1, false);
-                    break;
-                case INPUT_CTRL_LEFT:
-                    textbuffer_cursor_word(buffer, -1, false);
-                    break;
-                case INPUT_SHIFT_CTRL_RIGHT:
-                    textbuffer_cursor_word(buffer, 1, true);
-                    break;
-                case INPUT_SHIFT_CTRL_LEFT:
-                    textbuffer_cursor_word(buffer, -1, true);
-                    break;
-                // Cursor-Line.
-                case INPUT_HOME:
-                    textbuffer_cursor_line(buffer, -1, false);
-                    break;
-                case INPUT_END:
-                    textbuffer_cursor_line(buffer, 1, false);
-                    break;
-                case INPUT_SHIFT_HOME:
-                    textbuffer_cursor_line(buffer, -1, true);
-                    break;
-                case INPUT_SHIFT_END:
-                    textbuffer_cursor_line(buffer, 1, true);
-                    break;
-                // Selection Options.
-                case INPUT_ESC:
-                    textbuffer_selection_clear(buffer);
-                    break;
-                // Move Lines.
-                case INPUT_CTRL_UP:
-                    textbuffer_edit_move_lines(buffer, -1);
-                    break;
-                case INPUT_CTRL_DOWN:
-                    textbuffer_edit_move_lines(buffer, 1);
-                    break;
-                // Multi-Cursor.
-                case INPUT_SHIFT_CTRL_UP:
-                    textbuffer_selection_add_next_row(buffer, -1);
-                    break;
-                case INPUT_SHIFT_CTRL_DOWN:
-                    textbuffer_selection_add_next_row(buffer, 1);
-                    break;
-                // Edit-Char
-                case INPUT_CHAR:
-                    if (event.charcode >= ' ') {
-                        textbuffer_edit_char(buffer, event.charcode, 1);
-                    } else if (event.charcode == 17) {
-                        // CTRL-Q - Quit.
+            ON_KEY(&event) {
+                KEY_CTRL(&event) {
+                    CTRL('Q') {
                         exit = true;
-                    } else if (event.charcode == 26) {
-                        // CTRL-Z - Undo.
-                        textbuffer_undo(buffer);
-                    } else if (event.charcode == 25) {
-                        // CTRL-Y - Redo.
-                        textbuffer_redo(buffer);
-                    } else if (event.charcode == 4) {
-                        // CTRL-D - DUP.
-                        textbuffer_edit_duplicate(buffer, 1);
-                    } else if (event.charcode == 5) {
-                        // CTRL-E - DUP Lines.
-                        textbuffer_edit_duplicate_lines(buffer, 1);
-                    } else if (event.charcode == 7) {
-                        // CTRL-G - Delete Lines.
-                        textbuffer_edit_delete_lines(buffer, 1);
+                        break;
                     }
+                }
+                default:{
+                    textaction(&event, buffer, 1, editor.clipboard);
                     break;
-                // Edit-Newline
-                case INPUT_ENTER:
-                    textbuffer_edit_newline(buffer, 1);
-                    break;
-                // Edit-Delete
-                case INPUT_DELETE:
-                    textbuffer_edit_delete(buffer, 1);
-                    break;
-                // Edit-Backspace.
-                case INPUT_BACKSPACE:
-                    textbuffer_edit_backspace(buffer, 1);
-                    break;
-                case INPUT_TAB:
-                    textbuffer_edit_tab(buffer, 1);
-                    break;
-                case INPUT_SHIFT_TAB:
-                    textbuffer_edit_indent(buffer, -1);
-                    break;
+                }
             }
+
         }
 
         if (ioctl(0, TIOCGWINSZ, &size) == 0) {
@@ -192,6 +95,8 @@ int main (int argc, char** argv) {
     textbuffer_destroy(buffer);
 
     array_destroy(filenames);
+
+    editor_fini(&editor);
 
     output_cnorm();
     output_fini();

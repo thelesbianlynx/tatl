@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <limits.h>
 #include <string.h>
+#include <unistd.h>
 #include <math.h>
 
 //
@@ -17,13 +18,14 @@
 //
 typedef struct editor Editor;
 
-typedef struct rope Rope;
-typedef struct point Point;
+typedef struct filebuffer FileBuffer;
 
 typedef struct textbuffer TextBuffer;
 typedef struct selection Selection;
-
 typedef struct textview TextView;
+
+typedef struct rope Rope;
+typedef struct point Point;
 
 typedef struct array Array;
 typedef struct charbuffer CharBuffer;
