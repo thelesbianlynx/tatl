@@ -59,93 +59,93 @@ void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipbo
 
         // Cursor By Row.
         KEY_UP {
-            textbuffer_cursor_row(buffer, -1, false);
+            textbuffer_cursor_row(buffer, -i, false);
             break;
         }
         KEY_DOWN {
-            textbuffer_cursor_row(buffer, 1, false);
+            textbuffer_cursor_row(buffer, i, false);
             break;
         }
         KEY_SHIFT_UP {
-            textbuffer_cursor_row(buffer, -1, true);
+            textbuffer_cursor_row(buffer, -i, true);
             break;
         }
         KEY_SHIFT_DOWN {
-            textbuffer_cursor_row(buffer, 1, true);
+            textbuffer_cursor_row(buffer, i, true);
             break;
         }
 
         // Cursor by Column.
         KEY_LEFT {
-            textbuffer_cursor_col(buffer, -1, false);
+            textbuffer_cursor_col(buffer, -i, false);
             break;
         }
         KEY_RIGHT {
-            textbuffer_cursor_col(buffer, 1, false);
+            textbuffer_cursor_col(buffer, i, false);
             break;
         }
         KEY_SHIFT_LEFT {
-            textbuffer_cursor_col(buffer, -1, true);
+            textbuffer_cursor_col(buffer, -i, true);
             break;
         }
         KEY_SHIFT_RIGHT {
-            textbuffer_cursor_col(buffer, 1, true);
+            textbuffer_cursor_col(buffer, i, true);
             break;
         }
 
         // Cursor by Word.
         KEY_CTRL_LEFT {
-            textbuffer_cursor_word(buffer, -1, false);
+            textbuffer_cursor_word(buffer, -i, false);
             break;
         }
         KEY_CTRL_RIGHT {
-            textbuffer_cursor_word(buffer, 1, false);
+            textbuffer_cursor_word(buffer, i, false);
             break;
         }
         KEY_SHIFT_CTRL_LEFT {
-            textbuffer_cursor_word(buffer, -1, true);
+            textbuffer_cursor_word(buffer, -i, true);
             break;
         }
         KEY_SHIFT_CTRL_RIGHT {
-            textbuffer_cursor_word(buffer, 1, true);
+            textbuffer_cursor_word(buffer, i, true);
             break;
         }
 
         // Cursor by Line.
         KEY_HOME {
-            textbuffer_cursor_line(buffer, -1, false);
+            textbuffer_cursor_line(buffer, -i, false);
             break;
         }
         KEY_END {
-            textbuffer_cursor_line(buffer, 1, false);
+            textbuffer_cursor_line(buffer, i, false);
             break;
         }
         KEY_SHIFT_HOME {
-            textbuffer_cursor_line(buffer, -1, true);
+            textbuffer_cursor_line(buffer, -i, true);
             break;
         }
         KEY_SHIFT_END {
-            textbuffer_cursor_line(buffer, 1, true);
+            textbuffer_cursor_line(buffer, i, true);
             break;
         }
 
         // Move Lines.
         KEY_CTRL_UP {
-            textbuffer_edit_move_lines(buffer, -1);
+            textbuffer_edit_move_lines(buffer, -i);
             break;
         }
         KEY_CTRL_DOWN {
-            textbuffer_edit_move_lines(buffer, 1);
+            textbuffer_edit_move_lines(buffer, i);
             break;
         }
 
         // Multi-Cursor by Row.
         KEY_SHIFT_CTRL_UP {
-            textbuffer_selection_add_next_row(buffer, -1);
+            textbuffer_selection_add_next_row(buffer, -i);
             break;
         }
         KEY_SHIFT_CTRL_DOWN {
-            textbuffer_selection_add_next_row(buffer, 1);
+            textbuffer_selection_add_next_row(buffer, i);
             break;
         }
 
@@ -157,26 +157,26 @@ void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipbo
 
         // Newline.
         KEY_ENTER {
-            textbuffer_edit_newline(buffer, 1);
+            textbuffer_edit_newline(buffer, i);
             break;
         }
         // Delete/Backspace.
         KEY_DELETE {
-            textbuffer_edit_delete(buffer, 1);
+            textbuffer_edit_delete(buffer, i);
             break;
         }
         KEY_BACKSPACE {
-            textbuffer_edit_backspace(buffer, 1);
+            textbuffer_edit_backspace(buffer, i);
             break;
         }
 
         // Indentation.
         KEY_TAB {
-            textbuffer_edit_tab(buffer, 1);
+            textbuffer_edit_tab(buffer, i);
             break;
         }
         KEY_SHIFT_TAB {
-            textbuffer_edit_indent(buffer, -1);
+            textbuffer_edit_indent(buffer, -i);
             break;
         }
 

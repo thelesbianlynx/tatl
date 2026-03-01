@@ -204,6 +204,11 @@ void split_buffer (IntBuffer* src, Array* A) {
 }
 
 Rope* rope_create (IntBuffer* src) {
+    // Create Empty Rope.
+    if (src == NULL) {
+        return rope_new(NULL);
+    }
+
     Array* A = array_create();
     Array* B = array_create();
 
@@ -767,6 +772,8 @@ uint32_t node_line_to_index (Node* node, uint32_t offset, uint32_t lines, int32_
 
 uint32_t rope_point_to_index (Rope* rope, Point point) {
     if (rope->node == NULL) return 0;
+    if (point.row < 0) return 0;
+    if (point.row > rope->node->lines) return rope->node->len;
 
     uint32_t l1 = node_line_to_index(rope->node, 0, 0, point.row);
     uint32_t l2 = node_line_to_index(rope->node, 0, 0, point.row + 1);

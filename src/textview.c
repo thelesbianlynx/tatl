@@ -66,7 +66,7 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     TextBuffer* buffer = view->buffer;
 
     // Width of line numbers.
-    int32_t ln_width = (int) log10(rope_lines(buffer->text)) + 3;
+    int32_t ln_width = (int) log10(rope_lines(buffer->text) + 1) + 3;
 
     // Alt Buffer Prompt width.
     // if (buffer->altmode) {
@@ -143,7 +143,6 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
         }
     }
 
-
     for (int i = 0; i < text_height; i++) {
         // Update end position with next line start.
         iend = rope_point_to_index(buffer->text, (Point) {view->scroll_line + i + 1, 0});
@@ -188,7 +187,7 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     // cursor pos:
     char buf[64];
     Point c = primary;
-    snprintf(buf, 64, "%d:%d %d", c.row, c.col, view->scroll_line);
+    snprintf(buf, 64, "%d:%d", c.row, c.col);
     output_cup(window->y + window->height - 1, window->x + 1);
     output_normal();
     output_str(buf);

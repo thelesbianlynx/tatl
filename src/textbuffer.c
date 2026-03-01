@@ -837,7 +837,7 @@ void textbuffer_selection_add_next_row (TextBuffer* buffer, int32_t i) {
         Selection* sel = array_peek(buffer->selections);
 
         Point p = rope_index_to_point(buffer->text, sel->cursor);
-        if (p.row >= rope_lines(buffer->text) - 1) break;
+        if (p.row >= rope_lines(buffer->text)) break;
         int32_t index = rope_point_to_index(buffer->text, (Point){p.row + 1, p.col});
 
         Selection* new = selection_create();

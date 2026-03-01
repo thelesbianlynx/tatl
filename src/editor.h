@@ -21,4 +21,4 @@ void editor_fini (Editor* editor);
 
 bool editor_event (Editor* editor, InputEvent* event);
 
-void editor_draw (Editor* editor);
+void editor_draw (Editor* editor, Box* window, MouseEvent* mev);

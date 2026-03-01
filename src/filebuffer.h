@@ -24,6 +24,9 @@ FileBuffer* filebuffer_create ();
 void filebuffer_destroy (FileBuffer* fb);
 
 
-void filebuffer_open (FileBuffer* fb, CharBuffer* path);
+void filebuffer_read (FileBuffer* fb, const char* path);
 
-void filebuffer_save (FileBuffer* fb);
+void filebuffer_write (FileBuffer* fb, const char* path);
+
+
+void filebuffer_draw (FileBuffer* fb, Box* window, MouseEvent* mev);

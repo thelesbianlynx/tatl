@@ -1,9 +1,14 @@
 #include "editor.h"
 
 #include "array.h"
-#include "charbuffer.h"
 #include "rope.h"
+#include "charbuffer.h"
 #include "filebuffer.h"
+#include "textbuffer.h"
+#include "textview.h"
+#include "textaction.h"
+#include "input.h"
+#include "output.h"
 
 
 void editor_init (Editor* editor) {
@@ -32,9 +37,26 @@ void editor_fini (Editor* editor) {
 
 bool editor_event (Editor* editor, InputEvent* event) {
 
+    ON_KEY(event) {
+        KEY_CTRL(event) {
+            CTRL('Q') {
+                return false;
+                break;
+            }
+        }
+        default: {
+            //textaction(&event, buffer, 1, editor->clipboard);
+            break;
+        }
+    }
+
+    if (editor->buffers->size == 0) {
+        return false;
+    }
+
     return true;
 }
 
-void editor_draw (Editor* editor) {
+void editor_draw (Editor* editor, Box* window, MouseEvent* m_event) {
 
 }

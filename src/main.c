@@ -8,12 +8,7 @@
 #include "output.h"
 #include "editor.h"
 
-#include "charbuffer.h"
-#include "intbuffer.h"
-#include "rope.h"
-#include "textbuffer.h"
-#include "textview.h"
-#include "textaction.h"
+#include "filebuffer.h"
 
 int main (int argc, char** argv) {
     //
@@ -38,21 +33,8 @@ int main (int argc, char** argv) {
     Editor editor;
     editor_init(&editor);
 
-    CharBuffer* chars = charbuffer_create();
-
-    FILE* f = fopen("src/textbuffer.c", "r");
-    charbuffer_read(chars, f);
-    fclose(f);
-
-    IntBuffer* data = intbuffer_create();
-    intbuffer_put_text(data, 0, chars);
-    charbuffer_destroy(chars);
-
-    Rope* rope = rope_create(data);
-    intbuffer_destroy(data);
-
-    TextBuffer* buffer = textbuffer_create(rope);
-    TextView* view = textview_create(buffer);
+    FileBuffer* fb = filebuffer_create();
+    // filebuffer_read(fb, "src/main.h");
 
     InputEvent event = {};
 
@@ -64,7 +46,7 @@ int main (int argc, char** argv) {
         int32_t debug[32] = {0};
         bool has_event = nextkey(10, &event, debug);
         if (has_event) {
-
+            // exit = !editor_event(&editor, &event);
             ON_KEY(&event) {
                 KEY_CTRL(&event) {
                     CTRL('Q') {
@@ -72,12 +54,11 @@ int main (int argc, char** argv) {
                         break;
                     }
                 }
-                default:{
-                    textaction(&event, buffer, 1, editor.clipboard);
+                default: {
+                    textaction(&event, fb->buffer, 1, editor.clipboard);
                     break;
                 }
             }
-
         }
 
         if (ioctl(0, TIOCGWINSZ, &size) == 0) {
@@ -87,12 +68,11 @@ int main (int argc, char** argv) {
 
         Box window = {0, 0, width, height};
         output_clear();
-        textview_draw(view, &window, event.type == INPUT_MOUSE ? &event.m_event : NULL);
+        filebuffer_draw(fb, &window, event.type == INPUT_MOUSE ? &event.m_event : NULL);
         output_frame();
     }
 
-    textview_destroy(view);
-    textbuffer_destroy(buffer);
+    filebuffer_destroy(fb);
 
     array_destroy(filenames);
 
