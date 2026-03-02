@@ -83,6 +83,9 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     // Height of Text area.
     int32_t text_height = window->height - 1;
 
+    // Number of lines in buffer.
+    int32_t lines = rope_lines(buffer->text) + 1;
+
     // Update Scroll.
     if (buffer->cursor_dmg) {
         // Scroll Line.
@@ -106,19 +109,17 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
         buffer->cursor_dmg = false;
     }
 
-    // Line start and end indices.
-    uint32_t istart = rope_point_to_index(buffer->text, (Point) {view->scroll_line, 0});
-    uint32_t iend;
-
     // Text start and end indices.
-    uint32_t text_start = istart;
-    uint32_t text_end = rope_point_to_index(buffer->text, (Point) {view->scroll_line + text_height, 0});
+    int32_t text_start = rope_point_to_index(buffer->text, (Point) {view->scroll_line, 0});
+    int32_t text_end = rope_point_to_index(buffer->text, (Point) {view->scroll_line + text_height, 0}) + 1;
 
     // Text style.
     uint8_t style[text_end - text_start] = {};
 
     // Primary Selection Cursor position.
     Point primary = {};
+    int32_t p_mem = -1;
+    int32_t p_cursor = -1;
 
     // Fill out style from selections.
     for (int i = 0; i < buffer->selections->size; i++) {
@@ -140,17 +141,21 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
         }
         if (sel->primary) {
             primary = rope_index_to_point(buffer->text, sel->cursor);
+            p_cursor = sel->cursor;
+            p_mem = sel->col_mem;
         }
     }
 
     for (int i = 0; i < text_height; i++) {
-        // Update end position with next line start.
-        iend = rope_point_to_index(buffer->text, (Point) {view->scroll_line + i + 1, 0});
 
-        // End of buffer.
-        if (istart == iend) {
+        // End of Buffer.
+        if (view->scroll_line + i >= lines) {
             break;
         }
+
+        // Start and end of line.
+        int32_t istart = rope_point_to_index(buffer->text, (Point) {view->scroll_line + i, 0});
+        int32_t iend = rope_point_to_index(buffer->text, (Point) {view->scroll_line + i, INT_MAX});
 
         // Line number.
         output_cup(window->y + i, window->x);
@@ -170,7 +175,7 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
         // Style struct to pass to putchar.
         PutCharData p = {
             .start = text_start,
-            .end = iend,
+            .end = iend + 1,
             .line_start = 0,// i*text_width,
             .curr = 0,
             .style = style,
@@ -178,7 +183,8 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
 
         // Line content.
         output_normal();
-        rope_foreach_substr(buffer->text, istart, iend, textview_putchar, &p); //(void*) (intptr_t) (istart + text_width));
+        rope_foreach_substr(buffer->text, istart, iend, textview_putchar, &p);
+        textview_putchar(iend, '\n', &p);
 
         // Update start of next line.
         istart = iend;
@@ -187,7 +193,7 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     // cursor pos:
     char buf[64];
     Point c = primary;
-    snprintf(buf, 64, "%d:%d", c.row, c.col);
+    snprintf(buf, 64, "%d:%d (%d, %d) %d", c.row, c.col, p_cursor, rope_len(buffer->text), p_mem);
     output_cup(window->y + window->height - 1, window->x + 1);
     output_normal();
     output_str(buf);

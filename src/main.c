@@ -34,7 +34,7 @@ int main (int argc, char** argv) {
     editor_init(&editor);
 
     FileBuffer* fb = filebuffer_create();
-    // filebuffer_read(fb, "src/main.h");
+    filebuffer_read(fb, "src/main.h");
 
     InputEvent event = {};
 

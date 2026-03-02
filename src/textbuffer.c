@@ -573,6 +573,7 @@ void textbuffer_edit_duplicate (TextBuffer* buffer, int32_t i) {
         Selection* sel = buffer->selections->data[x];
         Rope* text = rope_substr(buffer->text, head(sel), tail(sel));
         textbuffer_edit(buffer, head(sel), head(sel), text);
+        rope_destroy(text);
     }
 
     // Atomic Action.
@@ -591,6 +592,7 @@ void textbuffer_edit_duplicate_lines (TextBuffer* buffer, int32_t i) {
 
         Rope* text = rope_substr(buffer->text, head, tail);
         textbuffer_edit(buffer, head, head, text);
+        rope_destroy(text);
     }
 
     // Atomic Action.
@@ -600,9 +602,14 @@ void textbuffer_edit_duplicate_lines (TextBuffer* buffer, int32_t i) {
 void textbuffer_edit_move_lines (TextBuffer* buffer, int32_t i) {
     action_begin(buffer, ACTION_MOVE_LINES);
 
+    // Number of lines in the text
+    //  At least 1. If only 1 then return.
+    int32_t lines = rope_lines(buffer->text) + 1;
+    if (lines <= 1) return;
+
     // Move lines down.
     while (i > 0) {
-        int32_t top = rope_lines(buffer->text);
+        int32_t top = lines;
         int32_t bot = 0;
         for (int x = 0; x < buffer->selections->size; x++) {
             Selection* sel = buffer->selections->data[x];
@@ -612,7 +619,7 @@ void textbuffer_edit_move_lines (TextBuffer* buffer, int32_t i) {
             bot = MAX(ptail.row, bot);
         }
 
-        if (bot >= rope_lines(buffer->text)) break;
+        if (bot >= lines - 1) break;
 
         int32_t head = rope_point_to_index(buffer->text, (Point) {bot + 1, 0});
         int32_t tail = rope_point_to_index(buffer->text, (Point) {bot + 2, 0});
@@ -621,12 +628,13 @@ void textbuffer_edit_move_lines (TextBuffer* buffer, int32_t i) {
 
         int32_t dst = rope_point_to_index(buffer->text, (Point) {top, 0});
         textbuffer_edit(buffer, dst, dst, line);
+        rope_destroy(line);
         i--;
     }
 
     // Move lines up.
     while (i < 0) {
-        int32_t top = rope_lines(buffer->text);
+        int32_t top = lines;
         int32_t bot = 0;
         for (int x = 0; x < buffer->selections->size; x++) {
             Selection* sel = buffer->selections->data[x];
@@ -636,7 +644,7 @@ void textbuffer_edit_move_lines (TextBuffer* buffer, int32_t i) {
             bot = MAX(ptail.row, bot);
         }
 
-        if (bot <= 0) break;
+        if (top <= 0) break;
 
         int32_t head = rope_point_to_index(buffer->text, (Point) {top - 1, 0});
         int32_t tail = rope_point_to_index(buffer->text, (Point) {top, 0});
@@ -645,6 +653,7 @@ void textbuffer_edit_move_lines (TextBuffer* buffer, int32_t i) {
 
         int32_t dst = rope_point_to_index(buffer->text, (Point) {bot, 0});
         textbuffer_edit(buffer, dst, dst, line);
+        rope_destroy(line);
         i++;
     }
 
