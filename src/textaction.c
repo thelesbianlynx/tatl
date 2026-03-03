@@ -35,6 +35,16 @@ void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipbo
                 textbuffer_redo(buffer);
                 break;
             }
+
+            // Duplicate.
+            CTRL('D') {
+                textbuffer_edit_duplicate(buffer, i);
+                break;
+            }
+            CTRL('L') {
+                textbuffer_edit_duplicate_lines(buffer, i);
+                break;
+            }
         } break;
 
         // ALT-Actions.
@@ -53,6 +63,15 @@ void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipbo
             }
             ALT(';') {
 
+                break;
+            }
+
+            ALT('d'){
+                textbuffer_edit_delete(buffer, i);
+                break;
+            }
+            ALT('D') {
+                textbuffer_edit_delete_lines(buffer, i);
                 break;
             }
         } break;

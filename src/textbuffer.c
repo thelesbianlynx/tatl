@@ -590,7 +590,24 @@ void textbuffer_edit_duplicate_lines (TextBuffer* buffer, int32_t i) {
         int32_t head = rope_point_to_index(buffer->text, (Point) {phead.row, 0});
         int32_t tail = rope_point_to_index(buffer->text, (Point) {ptail.row + 1, 0});
 
+        // Text to Duplicate.
         Rope* text = rope_substr(buffer->text, head, tail);
+
+        // Check if ends in newline.
+        if (rope_get_char(text, rope_len(text)) != '\n') {
+            // Rope with just newline.
+            IntBuffer* itext = intbuffer_create();
+            intbuffer_put_char(itext, 0, '\n');
+            Rope* ln = rope_create(itext);
+            intbuffer_destroy(itext);
+            // Append to rope.
+            Rope* rope_ln = rope_append(text, ln);
+            rope_destroy(ln);
+            rope_destroy(text);
+            text = rope_ln;
+        }
+
+        // Duplicate Text.
         textbuffer_edit(buffer, head, head, text);
         rope_destroy(text);
     }
@@ -598,6 +615,58 @@ void textbuffer_edit_duplicate_lines (TextBuffer* buffer, int32_t i) {
     // Atomic Action.
     action_end(buffer);
 }
+
+static
+Rope* get_lines (TextBuffer* buffer, int32_t i, int32_t j) {
+    int32_t head = rope_point_to_index(buffer->text, (Point) {i, 0});
+    int32_t tail = rope_point_to_index(buffer->text, (Point) {j - 1, INT_MAX});
+
+    Rope* line = rope_substr(buffer->text, head, tail);
+    textbuffer_edit(buffer, j > rope_lines(buffer->text) ? head - 1 : head, tail + 1, NULL);
+
+    return line;
+}
+
+static
+void put_lines (TextBuffer* buffer, Rope* text, int32_t i) {
+    // Special Case: End of text.
+    if (i > rope_lines(buffer->text)) {
+        // Newline Before Text.
+        IntBuffer* itext = intbuffer_create();
+        intbuffer_put_char(itext, 0, '\n');
+        Rope* ln = rope_create(itext);
+        intbuffer_destroy(itext);
+        Rope* line = rope_append(ln, text);
+        rope_destroy(ln);
+
+        // Insert.
+        // int32_t dst = rope_len(buffer->text);
+        // textbuffer_edit(buffer, dst, dst, line);
+        // I might regret doing this but it works for move lines.
+        // Don't make a habbit of this, all changes to buffer->text *should* be in textbuffer_edit.
+        // Doing this the 'right' way breaks move lines up when the cursor is at the very end of the text.
+        Rope* t = rope_append(buffer->text, line);
+        rope_destroy(buffer->text);
+        buffer->text = t;
+        rope_destroy(line);
+    }
+    // Normal Case: Middle of text.
+    else {
+        // Newline After Text.
+        IntBuffer* itext = intbuffer_create();
+        intbuffer_put_char(itext, 0, '\n');
+        Rope* ln = rope_create(itext);
+        intbuffer_destroy(itext);
+        Rope* line = rope_append(text, ln);
+        rope_destroy(ln);
+
+        //Insert.
+        int32_t dst = rope_point_to_index(buffer->text, (Point) {i, 0});
+        textbuffer_edit(buffer, dst, dst, line);
+        rope_destroy(line);
+    }
+}
+
 
 void textbuffer_edit_move_lines (TextBuffer* buffer, int32_t i) {
     action_begin(buffer, ACTION_MOVE_LINES);
@@ -621,13 +690,16 @@ void textbuffer_edit_move_lines (TextBuffer* buffer, int32_t i) {
 
         if (bot >= lines - 1) break;
 
-        int32_t head = rope_point_to_index(buffer->text, (Point) {bot + 1, 0});
-        int32_t tail = rope_point_to_index(buffer->text, (Point) {bot + 2, 0});
-        Rope* line = rope_substr(buffer->text, head, tail);
-        textbuffer_edit(buffer, head, tail, NULL);
+        // int32_t head = rope_point_to_index(buffer->text, (Point) {bot + 1, 0});
+        // int32_t tail = rope_point_to_index(buffer->text, (Point) {bot + 2, 0});
+        // Rope* line = rope_substr(buffer->text, head, tail);
+        // textbuffer_edit(buffer, head, tail, NULL);
+        //
+        // int32_t dst = rope_point_to_index(buffer->text, (Point) {top, 0});
+        // textbuffer_edit(buffer, dst, dst, line);
 
-        int32_t dst = rope_point_to_index(buffer->text, (Point) {top, 0});
-        textbuffer_edit(buffer, dst, dst, line);
+        Rope* line = get_lines(buffer, bot+1, bot+2);
+        put_lines(buffer, line, top);
         rope_destroy(line);
         i--;
     }
@@ -646,13 +718,16 @@ void textbuffer_edit_move_lines (TextBuffer* buffer, int32_t i) {
 
         if (top <= 0) break;
 
-        int32_t head = rope_point_to_index(buffer->text, (Point) {top - 1, 0});
-        int32_t tail = rope_point_to_index(buffer->text, (Point) {top, 0});
-        Rope* line = rope_substr(buffer->text, head, tail);
-        textbuffer_edit(buffer, head, tail, NULL);
+        // int32_t head = rope_point_to_index(buffer->text, (Point) {top - 1, 0});
+        // int32_t tail = rope_point_to_index(buffer->text, (Point) {top, 0});
+        // Rope* line = rope_substr(buffer->text, head, tail);
+        // textbuffer_edit(buffer, head, tail, NULL);
+        //
+        // int32_t dst = rope_point_to_index(buffer->text, (Point) {bot, 0});
+        // textbuffer_edit(buffer, dst, dst, line);
 
-        int32_t dst = rope_point_to_index(buffer->text, (Point) {bot, 0});
-        textbuffer_edit(buffer, dst, dst, line);
+        Rope* line = get_lines(buffer, top-1, top);
+        put_lines(buffer, line, bot);
         rope_destroy(line);
         i++;
     }
@@ -766,7 +841,7 @@ void textbuffer_cursor_line (TextBuffer* buffer, int32_t i, bool s) {
         while (n > 0) {
             int32_t start = sel->cursor + 1;
             Point p = rope_index_to_point(buffer->text, start);
-            sel->cursor = MAX(0, rope_point_to_index(buffer->text, (Point) {p.row + 1, 0}) - 1);
+            sel->cursor = rope_point_to_index(buffer->text, (Point) {p.row, INT_MAX});
             n--;
         }
 
