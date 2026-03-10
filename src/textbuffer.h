@@ -36,6 +36,11 @@ TextBuffer* textbuffer_create (Rope* text);
 void textbuffer_destroy (TextBuffer* buffer);
 
 
+void textbuffer_get_contents (TextBuffer* buffer, CharBuffer* contents);
+
+void textbuffer_set_contents (TextBuffer* buffer, CharBuffer* contents);
+
+
 void textbuffer_undo (TextBuffer* buffer);
 
 void textbuffer_redo (TextBuffer* buffer);

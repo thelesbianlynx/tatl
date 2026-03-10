@@ -18,6 +18,7 @@ FileBuffer* filebuffer_create () {
     fb->shortpath = charbuffer_create();
 
     charbuffer_astr(fb->title, "Untitled");
+    charbuffer_astr(fb->shortpath, "[Untitled]");
 
     return fb;
 }
@@ -44,8 +45,9 @@ uint32_t last_slash(const char* path) {
 }
 
 static
-char* set_path (FileBuffer* fb, const char* path) {
+const char* set_path (FileBuffer* fb, const char* path) {
     char* rpath = realpath(path, NULL);
+    if (rpath == NULL) return path;
 
     // Long Path.
     charbuffer_clear(fb->longpath);
@@ -66,12 +68,39 @@ char* set_path (FileBuffer* fb, const char* path) {
     return fb->longpath->buffer;
 }
 
-void filebuffer_read (FileBuffer* fb, const char* path) {
-    char* filepath = set_path(fb, path);
+static
+void filebuffer_unsaved_read (FileBuffer* fb, const char* path) {
+    // In The case where the read file does not exist:
+    //  - Set the path association so that it may be created upon save.
 
-    CharBuffer* chars = charbuffer_create();
+    // Long Path.
+    //  - Raw input path.
+    charbuffer_clear(fb->longpath);
+    charbuffer_astr(fb->longpath, path);
+
+    // Short Path.
+    //  - Raw input path with an appropriate warning
+    //  - for display purposes.
+    charbuffer_clear(fb->shortpath);
+    charbuffer_astr(fb->shortpath, "[Uncreated] ");
+    charbuffer_astr(fb->shortpath, path);
+
+    // Title.
+    //  - Just the filename.
+    charbuffer_clear(fb->title);
+    charbuffer_astr(fb->title, path + last_slash(path));
+}
+
+bool filebuffer_read (FileBuffer* fb, const char* path) {
+    const char* filepath = set_path(fb, path);
 
     FILE* f = fopen(filepath, "r");
+    if (f == NULL) {
+        filebuffer_unsaved_read(fb, filepath);
+        return false;
+    }
+
+    CharBuffer* chars = charbuffer_create();
     charbuffer_read(chars, f);
     fclose(f);
 
@@ -91,6 +120,8 @@ void filebuffer_read (FileBuffer* fb, const char* path) {
 
     textview_destroy(fb->view);
     fb->view = textview_create(fb->buffer);
+
+    return true;
 }
 
 static
@@ -103,15 +134,17 @@ bool rope_write (uint32_t i, uint32_t ch, void* data) {
     return true;
 }
 
-void filebuffer_write (FileBuffer* fb, const char* path) {
-    char* filepath = set_path(fb, path);
+bool filebuffer_write (FileBuffer* fb, const char* path) {
+    FILE* f = fopen(path, "w");
+    if (f == NULL) return false;
 
-    FILE* f = fopen(filepath, "w");
     rope_foreach(fb->buffer->text, rope_write, f);
     fputc('\n', f); // Put Back Ending Newline.
     fclose(f);
 
+    set_path(fb, path);
     fb->buffer->text_dmg = false;
+    return true;
 }
 
 
@@ -130,7 +163,7 @@ void filebuffer_draw (FileBuffer* fb, Box* window, MouseEvent* mev) {
         // First line: 'short' path name.
         output_cup(line, 0);
         //output_reverse();
-        snprintf(buf, width + 1, " %-*s ", width - 2, fb->shortpath->size > 0 ? fb->shortpath->buffer : "[Untitled]");
+        snprintf(buf, width + 1, " %-*s ", width - 2, fb->shortpath->buffer);
         output_str(buf);
         output_normal();
     }

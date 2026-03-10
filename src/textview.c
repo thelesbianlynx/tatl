@@ -11,6 +11,7 @@ TextView* textview_create (TextBuffer* buffer) {
     view->buffer = buffer;
     view->scroll_line = 0;
     view->scroll_col = 0;
+    view->linenos = true;
 
     return view;
 }
@@ -49,8 +50,8 @@ bool textview_putchar (uint32_t i, uint32_t ch, void* data) {
         // Put character.
         if (ch >= ' ') {
             output_uchar(ch);
-        } else if (ch == '\t') {
-            // ...
+        // } else if (ch == '\t') {
+        //     // ...
         } else {
             output_uchar(' ');
         }
@@ -66,12 +67,7 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     TextBuffer* buffer = view->buffer;
 
     // Width of line numbers.
-    int32_t ln_width = (int) log10(rope_lines(buffer->text) + 1) + 3;
-
-    // Alt Buffer Prompt width.
-    // if (buffer->altmode) {
-    //     ln_width = buffer->title->size;
-    // }
+    int32_t ln_width = view->linenos ? (int32_t) log10(rope_lines(buffer->text) + 1) + 3 : 0;
 
     // Mouse Input.
     if (mstate != NULL) {
@@ -81,7 +77,7 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     // Width of Text area.
     int32_t text_width = window->width - ln_width;
     // Height of Text area.
-    int32_t text_height = window->height - 1;
+    int32_t text_height = window->height;
 
     // Number of lines in buffer.
     int32_t lines = rope_lines(buffer->text) + 1;
@@ -95,10 +91,12 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
             int32_t top = rope_index_to_point(buffer->text, ((Selection*) buffer->selections->data[0])->cursor).row;
             //int32_t bot = rope_index_to_point(buffer->text, ((Selection*) array_peek(buffer->selections))->cursor).row;
 
-            if (top < view->scroll_line) {
+            if (text_height == 1) {
+                view->scroll_line = top;
+            } else if (top < view->scroll_line) {
                 view->scroll_line = top;
             } else if (top > view->scroll_line + text_height - 2) {
-                view->scroll_line = top - text_height + 2;
+                view->scroll_line = MAX(0, top - text_height + 2);
             }
         }
 
@@ -161,15 +159,10 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
         output_cup(window->y + i, window->x);
         output_normal();
         output_bold();
-        if (!buffer->altmode) {
+        if (view->linenos) {
             char ln_buf[ln_width + 1];
             snprintf(ln_buf, ln_width + 1, "%*d ", ln_width - 1 , view->scroll_line + i + 1);
             output_str(ln_buf);
-        } else {
-            // Alt mode prompt instead of line number.
-            // for (int j = 0; j < buffer->title->size; ++j) {
-                // output_char(buffer->title->buffer[j]);
-            // }
         }
 
         // Style struct to pass to putchar.
@@ -191,12 +184,12 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     }
 
     // cursor pos:
-    char buf[64];
+    // char buf[64];
     Point c = primary;
-    snprintf(buf, 64, "%d:%d (%d, %d) %d", c.row, c.col, p_cursor, rope_len(buffer->text), p_mem);
-    output_cup(window->y + window->height - 1, window->x + 1);
-    output_normal();
-    output_str(buf);
+    // snprintf(buf, 64, "%d:%d (%d, %d) %d", c.row, c.col, p_cursor, rope_len(buffer->text), p_mem);
+    // output_cup(window->y + window->height - 1, window->x + 1);
+    // output_normal();
+    // output_str(buf);
 
     // Cursor.
     if (c.row >= view->scroll_line && c.row < view->scroll_line + text_height &&

@@ -3,9 +3,12 @@
 #include "main.h"
 
 struct editor {
-
     Array* buffers;
     uint32_t current_buffer;
+
+    uint32_t altmode;
+    TextBuffer* altbuffer;
+    TextView* altview;
 
     CharBuffer* dir;
 
@@ -14,7 +17,7 @@ struct editor {
 };
 
 
-void editor_init (Editor* editor);
+void editor_init (Editor* editor, Array* filename);
 
 void editor_fini (Editor* editor);
 

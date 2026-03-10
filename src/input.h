@@ -7,6 +7,7 @@ enum input_event_type {
 
     INPUT_CHAR,
     INPUT_ALT_CHAR,
+    INPUT_CTRL_CHAR,
 
     INPUT_ESC,
     INPUT_TAB,

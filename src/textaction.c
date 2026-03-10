@@ -45,6 +45,11 @@ void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipbo
                 textbuffer_edit_duplicate_lines(buffer, i);
                 break;
             }
+
+            CTRL('N') {
+                textbuffer_edit_char(buffer, 'N', i);
+                break;
+            }
         } break;
 
         // ALT-Actions.

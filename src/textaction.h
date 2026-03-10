@@ -19,8 +19,8 @@ void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipbo
 
 // Control+Key events.
 //  - Requires external break.
-#define KEY_CTRL(event) case INPUT_CHAR: switch ((event)->charcode)
-#define CTRL(key) case key - 'A' + 1:
+#define KEY_CTRL(event) case INPUT_CTRL_CHAR: switch ((event)->charcode)
+#define CTRL(key) case key:
 
 // Alt+Key events.
 //  - Requires external break.

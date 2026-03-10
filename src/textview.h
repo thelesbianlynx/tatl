@@ -8,6 +8,8 @@ struct textview {
 
     int32_t scroll_line;
     int32_t scroll_col;
+
+    bool linenos;
 };
 
 TextView* textview_create (TextBuffer* buffer);

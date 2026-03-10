@@ -118,6 +118,9 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
                 event->type = INPUT_ESC;
             } else if (c == 127) {
                 event->type = INPUT_BACKSPACE;
+            } else if (c < 32) {
+                event->type = INPUT_CTRL_CHAR;
+                event->charcode = 'A' + c - 1;
             } else {
                 event->type = INPUT_CHAR;
                 event->charcode = c;

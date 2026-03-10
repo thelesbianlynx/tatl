@@ -1,7 +1,9 @@
 #include "textbuffer.h"
 
 #include "array.h"
+#include "charbuffer.h"
 #include "intbuffer.h"
+#include "codepoint.h"
 #include "rope.h"
 
 
@@ -219,6 +221,61 @@ void textbuffer_destroy (TextBuffer* buffer) {
     rope_destroy(buffer->text);
     free(buffer);
 }
+
+
+//
+// Get/Set Contents.
+//
+
+
+static
+bool rope_char (uint32_t i, uint32_t ch, void* data) {
+    CharBuffer* str = data;
+    char buf[5] = {};
+    codepoint_to_chars(buf, ch);
+    charbuffer_astr(str, buf);
+    return true;
+}
+
+void textbuffer_get_contents (TextBuffer* buffer, CharBuffer* contents) {
+    rope_foreach(buffer->text, rope_char, contents);
+}
+
+static
+void textbuffer_reset (TextBuffer* buffer) {
+    Selection* sel = selection_array_clear(buffer->selections);
+    selection_destroy(selection_array_clear(buffer->pre_selections));
+    hist_array_clear(buffer->undo);
+    hist_array_clear(buffer->redo);
+    buffer->action_state = false;
+    buffer->action_type = 0;
+
+    sel->cursor = sel->anchor = sel->col_mem = 0;
+    array_add(buffer->selections, sel);
+
+    action_begin(buffer, ACTION_EDIT);
+    action_end(buffer);
+}
+
+void textbuffer_set_contents (TextBuffer* buffer, CharBuffer* contents) {
+    if (contents == NULL) {
+        rope_destroy(buffer->text);
+        buffer->text = rope_create(NULL);
+    } else {
+        IntBuffer* chars32 = intbuffer_create();
+        intbuffer_put_text(chars32, 0, contents);
+
+        Rope* text = rope_create(chars32);
+        intbuffer_destroy(chars32);
+
+        rope_destroy(buffer->text);
+        buffer->text = text;
+    }
+
+    textbuffer_reset(buffer);
+    textbuffer_cursor_goto(buffer, INT_MAX, INT_MAX, false);
+}
+
 
 //
 // Undo/Redo and Action tracking.

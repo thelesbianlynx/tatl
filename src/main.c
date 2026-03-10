@@ -31,10 +31,7 @@ int main (int argc, char** argv) {
     output_init();
 
     Editor editor;
-    editor_init(&editor);
-
-    FileBuffer* fb = filebuffer_create();
-    filebuffer_read(fb, "src/main.h");
+    editor_init(&editor, filenames);
 
     InputEvent event = {};
 
@@ -46,19 +43,7 @@ int main (int argc, char** argv) {
         int32_t debug[32] = {0};
         bool has_event = nextkey(10, &event, debug);
         if (has_event) {
-            // exit = !editor_event(&editor, &event);
-            ON_KEY(&event) {
-                KEY_CTRL(&event) {
-                    CTRL('Q') {
-                        exit = true;
-                        break;
-                    }
-                }
-                default: {
-                    textaction(&event, fb->buffer, 1, editor.clipboard);
-                    break;
-                }
-            }
+            exit = !editor_event(&editor, &event);
         }
 
         if (ioctl(0, TIOCGWINSZ, &size) == 0) {
@@ -68,11 +53,9 @@ int main (int argc, char** argv) {
 
         Box window = {0, 0, width, height};
         output_clear();
-        filebuffer_draw(fb, &window, event.type == INPUT_MOUSE ? &event.m_event : NULL);
+        editor_draw(&editor, &window, event.type == INPUT_MOUSE ? &event.m_event : NULL);
         output_frame();
     }
-
-    filebuffer_destroy(fb);
 
     array_destroy(filenames);
 
