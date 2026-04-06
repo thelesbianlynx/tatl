@@ -62,7 +62,7 @@ const char* set_path (FileBuffer* fb, const char* path) {
     // Title.
     //  - Just the filename.
     charbuffer_clear(fb->title);
-    charbuffer_astr(fb->title, rpath + last_slash(rpath));
+    charbuffer_astr(fb->title, rpath + last_slash(rpath) + 1);
 
     free(rpath);
     return fb->longpath->buffer;
@@ -88,7 +88,7 @@ void filebuffer_unsaved_read (FileBuffer* fb, const char* path) {
     // Title.
     //  - Just the filename.
     charbuffer_clear(fb->title);
-    charbuffer_astr(fb->title, path + last_slash(path));
+    charbuffer_astr(fb->title, path + last_slash(path) + 1);
 }
 
 bool filebuffer_read (FileBuffer* fb, const char* path) {
@@ -159,11 +159,16 @@ void filebuffer_draw (FileBuffer* fb, Box* window, MouseEvent* mev) {
         uint32_t width = window->width;
 
         char buf[width+1];
+        char left[width+1];
 
-        // First line: 'short' path name.
-        output_cup(line, 0);
-        //output_reverse();
-        snprintf(buf, width + 1, " %-*s ", width - 2, fb->shortpath->buffer);
+        Point P = {};
+        textbuffer_primary_point(fb->buffer, &P);
+        snprintf(left, width + 1, "%s  %d:%d", "Text", P.row + 1, P.col + 1);
+
+        output_cup(line, window->x);
+        output_setfg(13);
+        output_reverse();
+        snprintf(buf, width + 1, " %s %*s ", left, width - 3 - (int) strlen(left), fb->shortpath->buffer);
         output_str(buf);
         output_normal();
     }

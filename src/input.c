@@ -96,6 +96,8 @@ bool mod_ctrl (uint32_t mods) {
 }
 
 bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
+    *event = (InputEvent) {};
+
     if (first_run) {
         first_run = false;
         return false;

@@ -40,6 +40,8 @@ void textbuffer_get_contents (TextBuffer* buffer, CharBuffer* contents);
 
 void textbuffer_set_contents (TextBuffer* buffer, CharBuffer* contents);
 
+void textbuffer_primary_point (TextBuffer* buffer, Point* P);
+
 
 void textbuffer_undo (TextBuffer* buffer);
 

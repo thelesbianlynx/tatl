@@ -8,7 +8,6 @@
 #include "output.h"
 #include "editor.h"
 
-#include "filebuffer.h"
 
 int main (int argc, char** argv) {
     //

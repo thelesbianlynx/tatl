@@ -14,6 +14,8 @@ struct editor {
 
     Array* clipboard;
 
+    int32_t tab_scroll;
+    int32_t tab_scroll_dmg;
 };
 
 

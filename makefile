@@ -1,4 +1,6 @@
 SOURCES = $(wildcard src/*.c)
+HEADERS = $(wildcard src/*.h)
+
 OBJECTS = $(patsubst src/%.c, out/%.o, $(SOURCES))
 
 NAME = tatl
@@ -9,7 +11,7 @@ BINDIR ?= $(DESTDIR)$(PREFIX)/bin
 $(NAME): $(OBJECTS)
 	gcc $(OBJECTS) -o $(NAME) -lm -lncurses
 
-out/%.o: src/%.c | out
+out/%.o: src/%.c $(HEADERS) | out
 	gcc $< -std=gnu11 -c -o $@ -Wall -Wshadow -g
 
 out:

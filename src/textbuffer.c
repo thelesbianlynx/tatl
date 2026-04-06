@@ -196,8 +196,6 @@ TextBuffer* textbuffer_create (Rope* text) {
     buffer->tab_width = 4;
     buffer->hard_tabs = false;
     buffer->altmode = false;
-    buffer->cursor_dmg = false;
-    buffer->text_dmg = false;
 
     Selection* primary_sel = selection_create();
     primary_sel->primary = true;
@@ -205,6 +203,8 @@ TextBuffer* textbuffer_create (Rope* text) {
 
     action_begin(buffer, ACTION_EDIT);
     action_end(buffer);
+    buffer->cursor_dmg = false;
+    buffer->text_dmg = false;
 
     return buffer;
 }
@@ -274,6 +274,16 @@ void textbuffer_set_contents (TextBuffer* buffer, CharBuffer* contents) {
 
     textbuffer_reset(buffer);
     textbuffer_cursor_goto(buffer, INT_MAX, INT_MAX, false);
+}
+
+void textbuffer_primary_point (TextBuffer* buffer, Point* P) {
+    for (int i = 0; i < buffer->selections->size; i++) {
+        Selection* sel = buffer->selections->data[i];
+        if (sel->primary) {
+            *P = rope_index_to_point(buffer->text, sel->cursor);
+            return;
+        }
+    }
 }
 
 
