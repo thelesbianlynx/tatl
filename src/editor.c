@@ -72,24 +72,9 @@ FileBuffer* get_buffer(Editor* editor) {
 static
 bool altbuffer_event (Editor* editor, InputEvent* event) {
     ON_KEY(event) {
-        KEY_CTRL(event) {
-            CTRL('Q') {
-                return false;
-            }
-
-            default: {
-                textaction(event, editor->altbuffer, 1, editor->clipboard);
-                break;
-            }
-        } break;
-
-        KEY_ALT(event) {
-
-            default: {
-                textaction(event, editor->altbuffer, 1, editor->clipboard);
-                break;
-            }
-        } break;
+        KEY_CTRL('Q') {
+            return false;
+        }
 
         KEY_ESC {
             editor->altmode = 0;
@@ -147,76 +132,61 @@ bool editor_event (Editor* editor, InputEvent* event) {
     FileBuffer* fb = get_buffer(editor);
 
     ON_KEY(event) {
-        KEY_CTRL(event) {
-            CTRL('Q') {
+        KEY_CTRL('Q') {
+            return false;
+        }
+
+        KEY_CTRL('W') {
+            if (editor->buffers->size <= 1) {
                 return false;
             }
 
-            CTRL('W') {
-                if (editor->buffers->size <= 1) {
-                    return false;
-                }
-
-                FileBuffer* rm_fb = array_remove(editor->buffers, editor->current_buffer);
-                if (editor->current_buffer >= editor->buffers->size) {
-                    editor->current_buffer--;
-                }
-
-                filebuffer_destroy(rm_fb);
-                editor->tab_scroll_dmg = true;
-                break;
-            }
-
-            CTRL('N') {
-                FileBuffer* new_fb = filebuffer_create();
-                array_add(editor->buffers, new_fb);
-                editor->current_buffer = editor->buffers->size - 1;
-                editor->tab_scroll_dmg = true;
-                break;
-            }
-
-            CTRL('O') {
-                textbuffer_set_contents(editor->altbuffer, NULL);
-                editor->altmode = ALT_OPEN;
-                break;
-            }
-
-            CTRL('S') {
-                textbuffer_set_contents(editor->altbuffer, fb->longpath);
-                editor->altmode = ALT_SAVE;
-                break;
-            }
-
-            CTRL('P') {
-                editor->altmode = ALT_SEARCH;
-                break;
-            }
-
-            default: {
-                textaction(event, fb->buffer, 1, editor->clipboard);
-                break;
-            }
-        } break;
-
-        KEY_ALT(event) {
-
-            ALT('t') {
-                editor->current_buffer++;
-                editor->tab_scroll_dmg = true;
-                break;
-            }
-
-            ALT('T') {
+            FileBuffer* rm_fb = array_remove(editor->buffers, editor->current_buffer);
+            if (editor->current_buffer >= editor->buffers->size) {
                 editor->current_buffer--;
-                editor->tab_scroll_dmg = true;
-                break;
             }
 
-            default: {
-                textaction(event, fb->buffer, 1, editor->clipboard);
-                break;
-            }
-        } break;
+            filebuffer_destroy(rm_fb);
+            editor->tab_scroll_dmg = true;
+            break;
+        }
+
+        KEY_CTRL('N') {
+            FileBuffer* new_fb = filebuffer_create();
+            array_add(editor->buffers, new_fb);
+            editor->current_buffer = editor->buffers->size - 1;
+            editor->tab_scroll_dmg = true;
+            break;
+        }
+
+        KEY_CTRL('O') {
+            textbuffer_set_contents(editor->altbuffer, NULL);
+            editor->altmode = ALT_OPEN;
+            break;
+        }
+
+        KEY_CTRL('S') {
+            textbuffer_set_contents(editor->altbuffer, fb->longpath);
+            editor->altmode = ALT_SAVE;
+            break;
+        }
+
+        KEY_CTRL('P') {
+            editor->altmode = ALT_SEARCH;
+            break;
+        }
+
+        KEY_ALT('t') {
+            editor->current_buffer++;
+            editor->tab_scroll_dmg = true;
+            break;
+        }
+
+        KEY_ALT('T') {
+            editor->current_buffer--;
+            editor->tab_scroll_dmg = true;
+            break;
+        }
 
         default: {
             textaction(event, fb->buffer, 1, editor->clipboard);

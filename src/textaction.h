@@ -14,18 +14,23 @@ void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipbo
 // Macros to make event handling easier to read.
 //
 
+#define ALT_MASK 0x80000000
+#define CTRL_MASK 0x40000000
+
+// Input-Event to Event-Code Conversion:
+uint32_t input_code (InputEvent* event);
+
+
 // Begin handle event.
-#define ON_KEY(event) switch ((event)->type)
+#define ON_KEY(event) switch (input_code(event))
 
 // Control+Key events.
 //  - Requires external break.
-#define KEY_CTRL(event) case INPUT_CTRL_CHAR: switch ((event)->charcode)
-#define CTRL(key) case key:
+#define KEY_CTRL(key) case CTRL_MASK | (key):
 
 // Alt+Key events.
 //  - Requires external break.
-#define KEY_ALT(event) case INPUT_ALT_CHAR: switch ((event)->charcode)
-#define ALT(key) case key:
+#define KEY_ALT(key) case ALT_MASK | (key):
 
 // Other Keys.
 

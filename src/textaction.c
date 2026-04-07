@@ -10,76 +10,65 @@
 //
 void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipboard) {
     ON_KEY(event) {
-        // CTRL-Actions.
-        KEY_CTRL(event) {
-            // Clipboard Actions.
-            CTRL('X') {
+        // Clipboard Actions.
+        KEY_CTRL('X') {
 
-                break;
-            }
-            CTRL('C') {
+            break;
+        }
+        KEY_CTRL('C') {
 
-                break;
-            }
-            CTRL('V') {
+            break;
+        }
+        KEY_CTRL('V') {
 
-                break;
-            }
+            break;
+        }
 
-            // Undo/Redo.
-            CTRL('Z'){
-                textbuffer_undo(buffer);
-                break;
-            }
-            CTRL('Y'){
-                textbuffer_redo(buffer);
-                break;
-            }
+        // Undo/Redo.
+        KEY_CTRL('Z'){
+            textbuffer_undo(buffer);
+            break;
+        }
+        KEY_CTRL('Y'){
+            textbuffer_redo(buffer);
+            break;
+        }
 
-            // Duplicate.
-            CTRL('D') {
-                textbuffer_edit_duplicate(buffer, i);
-                break;
-            }
-            CTRL('L') {
-                textbuffer_edit_duplicate_lines(buffer, i);
-                break;
-            }
+        // Duplicate.
+        KEY_CTRL('D') {
+            textbuffer_edit_duplicate(buffer, i);
+            break;
+        }
+        KEY_CTRL('L') {
+            textbuffer_edit_duplicate_lines(buffer, i);
+            break;
+        }
 
-            CTRL('N') {
-                textbuffer_edit_char(buffer, 'N', i);
-                break;
-            }
-        } break;
+        KEY_CTRL('N') {
+            textbuffer_edit_char(buffer, 'N', i);
+            break;
+        }
 
-        // ALT-Actions.
-        KEY_ALT(event) {
-            ALT('j') {
+        // Movement
+        KEY_ALT('j') {
 
-                break;
-            }
-            ALT('k') {
+            break;
+        }
+        KEY_ALT('k') {
 
-                break;
-            }
-            ALT('l') {
+            break;
+        }
+        KEY_ALT('l') {
 
-                break;
-            }
-            ALT(';') {
+            break;
+        }
+        KEY_ALT(';') {
 
-                break;
-            }
+            break;
+        }
 
-            ALT('d'){
-                textbuffer_edit_delete(buffer, i);
-                break;
-            }
-            ALT('D') {
-                textbuffer_edit_delete_lines(buffer, i);
-                break;
-            }
-        } break;
+        // Delete.
+
 
         // Cursor By Row.
         KEY_UP {
@@ -189,8 +178,17 @@ void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipbo
             textbuffer_edit_delete(buffer, i);
             break;
         }
+        KEY_ALT('d')
         KEY_BACKSPACE {
             textbuffer_edit_backspace(buffer, i);
+            break;
+        }
+        // KEY_ALT('d'){
+        //     textbuffer_edit_delete(buffer, i);
+        //     break;
+        // }
+        KEY_ALT('D') {
+            textbuffer_edit_delete_lines(buffer, i);
             break;
         }
 
@@ -209,5 +207,15 @@ void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipbo
     // Insert Character.
     if (event->type == INPUT_CHAR && event->charcode >= ' ') {
         textbuffer_edit_char(buffer, event->charcode, 1);
+    }
+}
+
+uint32_t input_code (InputEvent* event) {
+    if (event->type == INPUT_ALT_CHAR) {
+        return ALT_MASK | event->charcode;
+    } else if (event->type == INPUT_CTRL_CHAR) {
+        return CTRL_MASK | event->charcode;
+    } else {
+        return event->type;
     }
 }
