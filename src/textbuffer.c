@@ -803,6 +803,51 @@ void textbuffer_edit_move_lines (TextBuffer* buffer, int32_t i) {
     // No Action-End.
 }
 
+// - Yank (Copy & Cut) & Replace (Paste) - //
+
+void textbuffer_edit_yank (TextBuffer* buffer, Array* clipboard, bool cut) {
+    action_end(buffer);
+
+    // If no active selections: do nothing, do not override clipboard.
+    if (selection_array_max_len(buffer->selections) == 0) return;
+
+    // Clear Clipboard.
+    for (int i = 0; i < clipboard->size; i++) {
+        rope_destroy(clipboard->data[i]);
+    }
+    array_clear(clipboard);
+
+    // Copy Selections.
+    for (int i = 0; i < buffer->selections->size; i++) {
+        Selection* sel = buffer->selections->data[i];
+        Rope* text = rope_substr(buffer->text, head(sel), tail(sel));
+        array_add(clipboard, text);
+    }
+
+    // Cut Selections.
+    if (cut) {
+        action_begin(buffer, ACTION_EDIT);
+        for (int i = 0; i < buffer->selections->size; i++) {
+            Selection* sel = buffer->selections->data[i];
+            textbuffer_edit(buffer, head(sel), tail(sel), NULL);
+        }
+        action_end(buffer);
+    }
+}
+
+void textbuffer_edit_replace (TextBuffer* buffer, Array* clipboard, int32_t i) {
+    if (clipboard->size == 0) return;
+    action_begin(buffer, ACTION_EDIT);
+
+    for (int x = 0; x < buffer->selections->size; x++) {
+        Selection* sel = buffer->selections->data[x];
+        Rope* text = clipboard->data[clipboard->size >= buffer->selections->size ? x : 0];
+        textbuffer_edit(buffer, head(sel), tail(sel), text);
+    }
+
+    action_end(buffer);
+}
+
 //
 // Cursor Movement.
 //

@@ -9,18 +9,21 @@
 // Standard Text Actions.
 //
 void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipboard) {
+
+    int x[i] = {};
+    for (int y = 0; y < i; y++) printf("%d\n", x[y]);
     ON_KEY(event) {
         // Clipboard Actions.
         KEY_CTRL('X') {
-
+            textbuffer_edit_yank(buffer, clipboard, true);
             break;
         }
         KEY_CTRL('C') {
-
+            textbuffer_edit_yank(buffer, clipboard, false);
             break;
         }
         KEY_CTRL('V') {
-
+            textbuffer_edit_replace(buffer, clipboard, i);
             break;
         }
 

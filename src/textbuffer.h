@@ -77,6 +77,11 @@ void textbuffer_edit_duplicate_lines (TextBuffer* buffer, int32_t i);
 void textbuffer_edit_move_lines (TextBuffer* buffer, int32_t i);
 
 
+void textbuffer_edit_yank (TextBuffer* buffer, Array* clipboard, bool cut);
+
+void textbuffer_edit_replace (TextBuffer* buffer, Array* clipboard, int32_t i);
+
+
 
 void textbuffer_cursor_col (TextBuffer* buffer, int32_t i, bool s);
 
