@@ -10,8 +10,6 @@
 //
 void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipboard) {
 
-    int x[i] = {};
-    for (int y = 0; y < i; y++) printf("%d\n", x[y]);
     ON_KEY(event) {
         // Clipboard Actions.
         KEY_CTRL('X') {
