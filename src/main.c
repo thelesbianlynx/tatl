@@ -9,6 +9,8 @@
 #include "editor.h"
 
 
+bool cursor_blink = false;
+
 int main (int argc, char** argv) {
     //
     // Process Arguments
@@ -43,12 +45,16 @@ int main (int argc, char** argv) {
         bool has_event = nextkey(10, &event, debug);
         if (has_event) {
             exit = !editor_event(&editor, &event);
+            cursor_blink = false;
+        } else {
+            cursor_blink = !cursor_blink;
         }
 
         if (ioctl(0, TIOCGWINSZ, &size) == 0) {
             width = size.ws_col;
             height = size.ws_row;
         }
+
 
         Box window = {0, 0, width, height};
         output_clear();

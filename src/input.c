@@ -104,7 +104,7 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
     }
 
     struct pollfd pollfd = { .fd = 0, .events = POLLIN };
-    int status = poll(&pollfd, 1, 1000);
+    int status = poll(&pollfd, 1, 500);
     if (status > 0) {
         char buffer[64];
         int n = read(0, buffer, 64);

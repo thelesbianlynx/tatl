@@ -6,6 +6,7 @@
 #include "rope.h"
 #include "textbuffer.h"
 
+
 TextView* textview_create (TextBuffer* buffer) {
     TextView* view = malloc(sizeof(TextView));
     view->buffer = buffer;
@@ -20,48 +21,88 @@ void textview_destroy (TextView* view) {
     free(view);
 }
 
-typedef struct putchar_data PutCharData;
-struct putchar_data {
-    uint32_t start, end, line_start;
-    uint8_t curr;
-    uint8_t* style;
+
+//
+// Borrowed From TextBuffer.
+static inline
+uint32_t head (Selection* sel) {
+    return MIN(sel->cursor, sel->anchor);
+}
+static inline
+uint32_t tail (Selection* sel) {
+    return MAX(sel->cursor, sel->anchor);
+}
+
+
+extern bool cursor_blink;
+struct draw_char_data {
+    int32_t* chars;
+    uint32_t i_chars;
+
+    int32_t* styles;
+    uint32_t i_styles;
+
+    uint32_t scroll_col;
+    uint32_t col_width;
+    uint32_t i_col;
+
+    Array* selections;
+    uint32_t tab_width;
 };
 
 static
-bool textview_putchar (uint32_t i, uint32_t ch, void* data) {
-    PutCharData* p = data;
-    if (i < p->end) {
-        uint32_t x = i - p->start;
-        uint8_t s = p->style[x + p->line_start];
+bool char_style (uint32_t i, uint32_t ch, void* d) {
+    struct draw_char_data* data = d;
+    if (data->i_chars >= data->col_width) return true;
 
-        // Set style.
-        if (s != p->curr) {
-            output_normal();
-            p->curr = s;
-
-            if (s & 1) {
-                output_setbg(12);
-            }
-            if (s & 2) {
-                output_reverse();
-            }
-        }
-
-        // Put character.
-        if (ch >= ' ') {
-            output_uchar(ch);
-        // } else if (ch == '\t') {
-        //     // ...
-        } else {
-            output_uchar(' ');
-        }
-
-        // Continue.
-        return true;
+    // Cursor Style.
+    int32_t style = 0;
+    for (int x = 0; x < data->selections->size; x++) {
+        Selection* sel = data->selections->data[x];
+        if (head(sel) <= i && i < tail(sel)) style |= 1;
+        if (i == sel->cursor /*&& data->selections->size > 1*/ && !cursor_blink) style |= 2;
     }
 
-    return false;
+    // Colorizer Logic.
+    //  ....
+
+    // Emit Character and Style.
+
+    // Special case: Hard Tab.
+    if (ch == '\t') {
+        int t = data->tab_width - (data->i_col % data->tab_width);
+        for (int x = 0; x < t; x++) {
+            if (data->i_chars >= data->col_width) return true;
+            if (data->i_col >= data->scroll_col){
+                data->chars[data->i_chars] = ' ';
+                data->styles[data->i_chars] |= style;
+                data->i_chars++;
+            }
+            data->i_col++;
+        }
+    }
+    // Special case: Control Character.
+    else if (ch < 32) {
+        if (data->i_col >= data->scroll_col){
+            data->chars[data->i_chars] = ' ';
+            data->styles[data->i_chars] |= style;
+            data->i_chars++;
+        }
+        data->i_col++;
+    }
+    // General case: Regular Character.
+    else {
+        if (data->i_col >= data->scroll_col){
+            data->chars[data->i_chars] = ch;
+            data->styles[data->i_chars] |= style;
+            data->i_chars++;
+        }
+        data->i_col++;
+    }
+
+    return true;
 }
+
 
 void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     TextBuffer* buffer = view->buffer;
@@ -69,35 +110,49 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     // Width of line numbers.
     int32_t ln_width = view->linenos ? (int32_t) log10(rope_lines(buffer->text) + 1) + 3 : 0;
 
-    // Mouse Input.
-    if (mstate != NULL) {
-
-    }
-
     // Width of Text area.
     int32_t text_width = window->width - ln_width;
     // Height of Text area.
     int32_t text_height = window->height;
 
-    // Number of lines in buffer.
+    // Number of lines in buffer (at least 1).
     int32_t lines = rope_lines(buffer->text) + 1;
+
+    // Mouse Input.
+    if (mstate != NULL) {
+        int32_t mx = mstate->x, my = mstate->y;
+        if (mx > window->x && my > window->y) {
+            mx -= window->x;
+            my -= window->y;
+            if (mx <= window->width && my <= window->height) {
+                if (mstate->button == 0) {
+                    // Press.
+                    textbuffer_cursor_goto(buffer, my + view->scroll_line - 1, mx + view->scroll_col - ln_width - 1, false);
+                } else if (mstate->button == 32) {
+                    // Drag.
+                    textbuffer_cursor_goto(buffer, my + view->scroll_line - 1, mx + view->scroll_col - ln_width - 1, true);
+                } else if (mstate->button == 64) {
+                    // Scroll Up.
+                    view->scroll_line -= 2;
+                } else if (mstate->button == 65) {
+                    // Scroll Down.
+                    view->scroll_line += 2;
+                }
+            }
+        }
+    }
 
     // Update Scroll.
     if (buffer->cursor_dmg) {
         // Scroll Line.
-        if (buffer->altmode) {
-            view->scroll_line = 0;
-        } else {
-            int32_t top = rope_index_to_point(buffer->text, ((Selection*) buffer->selections->data[0])->cursor).row;
-            //int32_t bot = rope_index_to_point(buffer->text, ((Selection*) array_peek(buffer->selections))->cursor).row;
-
-            if (text_height == 1) {
-                view->scroll_line = top;
-            } else if (top < view->scroll_line) {
-                view->scroll_line = top;
-            } else if (top > view->scroll_line + text_height - 2) {
-                view->scroll_line = MAX(0, top - text_height + 2);
-            }
+        int32_t top = rope_index_to_point(buffer->text, ((Selection*) buffer->selections->data[0])->cursor).row;
+        //int32_t bot = rope_index_to_point(buffer->text, ((Selection*) array_peek(buffer->selections))->cursor).row;
+        if (text_height == 1) {
+            view->scroll_line = top;
+        } else if (top < view->scroll_line) {
+            view->scroll_line = top;
+        } else if (top > view->scroll_line + text_height - 2) {
+            view->scroll_line = MAX(0, top - text_height + 2);
         }
 
         // Scroll Column
@@ -107,42 +162,13 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
         buffer->cursor_dmg = false;
     }
 
-    // Text start and end indices.
-    int32_t text_start = rope_point_to_index(buffer->text, (Point) {view->scroll_line, 0});
-    int32_t text_end = rope_point_to_index(buffer->text, (Point) {view->scroll_line + text_height, 0}) + 1;
+    // Clamp Scroll.
+    if (view->scroll_line >= lines) view->scroll_line = lines - 1;
+    if (view->scroll_line < 0) view->scroll_line = 0;
 
-    // Text style.
-    uint8_t style[text_end - text_start] = {};
-
-    // Primary Selection Cursor position.
-    Point primary = {};
-    int32_t p_mem = -1;
-    int32_t p_cursor = -1;
-
-    // Fill out style from selections.
-    for (int i = 0; i < buffer->selections->size; i++) {
-        Selection* sel = buffer->selections->data[i];
-        int sel_start = MIN(sel->cursor, sel->anchor);
-        int sel_end = MAX(sel->cursor, sel->anchor);
-
-        while (sel_start < sel_end) {
-            if (text_start <= sel_start && sel_start < text_end) {
-                style[sel_start - text_start] |= 1;
-            }
-
-            sel_start++;
-        }
-        if (buffer->selections->size > 1) {
-            if (text_start <= sel->cursor && sel->cursor < text_end) {
-                style[sel->cursor - text_start] |= 2;
-            }
-        }
-        if (sel->primary) {
-            primary = rope_index_to_point(buffer->text, sel->cursor);
-            p_cursor = sel->cursor;
-            p_mem = sel->col_mem;
-        }
-    }
+    // Buffers for char and style data.
+    int32_t chars[text_width];
+    int32_t styles[text_width];
 
     for (int i = 0; i < text_height; i++) {
 
@@ -152,52 +178,77 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
         }
 
         // Start and end of line.
-        int32_t istart = rope_point_to_index(buffer->text, (Point) {view->scroll_line + i, 0});
-        int32_t iend = rope_point_to_index(buffer->text, (Point) {view->scroll_line + i, INT_MAX});
+        int32_t start = rope_point_to_index(buffer->text, (Point) {view->scroll_line + i, 0});
+        int32_t end = rope_point_to_index(buffer->text, (Point) {view->scroll_line + i, INT_MAX});
 
         // Line number.
         output_cup(window->y + i, window->x);
         output_normal();
-        output_bold();
         if (view->linenos) {
+            output_bold();
             char ln_buf[ln_width + 1];
             snprintf(ln_buf, ln_width + 1, "%*d ", ln_width - 1 , view->scroll_line + i + 1);
             output_str(ln_buf);
+            output_normal();
         }
 
-        // Style struct to pass to putchar.
-        PutCharData p = {
-            .start = text_start,
-            .end = iend + 1,
-            .line_start = 0,// i*text_width,
-            .curr = 0,
-            .style = style,
+        memset(chars, 0, sizeof chars);
+        memset(styles, 0, sizeof styles);
+        struct draw_char_data data = {
+            .scroll_col = view->scroll_col,
+            .col_width = text_width,
+            .chars = chars,
+            .styles = styles,
+            .selections = buffer->selections,
+            .tab_width = buffer->tab_width,
         };
 
-        // Line content.
-        output_normal();
-        rope_foreach_substr(buffer->text, istart, iend, textview_putchar, &p);
-        textview_putchar(iend, '\n', &p);
+        // Get Line Content and Style.
+        rope_foreach_substr(buffer->text, start, end, char_style, &data);
+        char_style(end, '\n', &data);
 
-        // Update start of next line.
-        istart = iend;
+        //  Write Line Content.
+        int32_t current_style = 0;
+        for (int x = 0; x < text_width; x++) {
+            int32_t ch = chars[x];
+            int32_t style = styles[x];
+
+            // End of line before end of screen.
+            if (ch == 0) break;
+
+            // Set style.
+            if (style != current_style) {
+                output_normal();
+                current_style= style;
+
+                if (style & 1) {
+                    output_setbg(12);
+                }
+                if (style & 2) {
+                    output_underline();
+                }
+            }
+            // Put character.
+            assert(ch >= 32 && "Invalid Ouput Character");
+            output_uchar(ch);
+        }
     }
 
     // cursor pos:
     // char buf[64];
-    Point c = primary;
+    // Point c = primary;
     // snprintf(buf, 64, "%d:%d (%d, %d) %d", c.row, c.col, p_cursor, rope_len(buffer->text), p_mem);
     // output_cup(window->y + window->height - 1, window->x + 1);
-    // output_normal();
+    output_normal();
     // output_str(buf);
 
     // Cursor.
-    if (c.row >= view->scroll_line && c.row < view->scroll_line + text_height &&
-        c.col >= view->scroll_col && c.col < view->scroll_col + text_width) {
-            output_cvvis();
-            output_cup(c.row + window->y - view->scroll_line, c.col + window->x + ln_width - view->scroll_col);
-    } else {
+    // if (buffer->selections->size == 1) {
+    //     Point c = rope_index_to_point(buffer->text, ((Selection*) buffer->selections->data[0])->cursor);
+    //     output_cvvis();
+    //     output_cup(c.row + window->y - view->scroll_line, c.col + window->x + ln_width - view->scroll_col);
+    // } else {
         output_civis();
-    }
+    // }
 
 }

@@ -33,15 +33,26 @@ void filebuffer_destroy (FileBuffer* fb) {
 }
 
 
+// static
+// uint32_t last_slash(const char* path) {
+//     int32_t i = 0;
+//     int32_t r = 0;
+//     while (path[i] != '\0') {
+//         if (path[i] == '/') r = i;
+//         i++;
+//     }
+//     return r;
+// }
+
 static
-uint32_t last_slash(const char* path) {
+const char* title_of (const char* path) {
     int32_t i = 0;
     int32_t r = 0;
     while (path[i] != '\0') {
         if (path[i] == '/') r = i;
         i++;
     }
-    return r;
+    return r == 0 ? path : path + r + 1;
 }
 
 static
@@ -62,7 +73,7 @@ const char* set_path (FileBuffer* fb, const char* path) {
     // Title.
     //  - Just the filename.
     charbuffer_clear(fb->title);
-    charbuffer_astr(fb->title, rpath + last_slash(rpath) + 1);
+    charbuffer_astr(fb->title, title_of(rpath));
 
     free(rpath);
     return fb->longpath->buffer;
@@ -88,7 +99,7 @@ void filebuffer_unsaved_read (FileBuffer* fb, const char* path) {
     // Title.
     //  - Just the filename.
     charbuffer_clear(fb->title);
-    charbuffer_astr(fb->title, path + last_slash(path) + 1);
+    charbuffer_astr(fb->title, title_of(path));
 }
 
 bool filebuffer_read (FileBuffer* fb, const char* path) {

@@ -24,8 +24,6 @@ struct textbuffer {
     uint32_t tab_width;
     bool hard_tabs;
 
-    bool altmode;
-
     bool cursor_dmg;
     bool text_dmg;
 };

@@ -195,8 +195,7 @@ TextBuffer* textbuffer_create (Rope* text) {
     buffer->pre_selections = array_create();
     buffer->tab_width = 4;
     buffer->hard_tabs = false;
-    buffer->altmode = false;
-
+    
     Selection* primary_sel = selection_create();
     primary_sel->primary = true;
     array_add(buffer->selections, primary_sel);
