@@ -62,6 +62,9 @@ enum input_event_type {
     INPUT_PGUP,
     INPUT_PGDOWN,
 
+    INPUT_SHIFT_PGUP,
+    INPUT_SHIFT_PGDOWN,
+
     INPUT_INSERT,
     INPUT_DELETE,
 

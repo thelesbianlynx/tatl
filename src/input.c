@@ -196,6 +196,18 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
                 } else if (key == 2 && mods == 4) {
                     event->type = INPUT_SHIFT_END;
                     return true;
+                } else if (key == 1 && mods == 5) {
+                    event->type = INPUT_PGUP;
+                    return true;
+                } else if (key == 1 && mods == 6) {
+                    event->type = INPUT_PGDOWN;
+                    return true;
+                } else if (key == 2 && mods == 5) {
+                    event->type = INPUT_SHIFT_PGUP;
+                    return true;
+                } else if (key == 2 && mods == 6) {
+                    event->type = INPUT_SHIFT_PGDOWN;
+                    return true;
                 } else {
                     return false;
                 }

@@ -87,6 +87,9 @@ uint32_t input_code (InputEvent* event);
 #define KEY_PGUP case INPUT_PGUP:
 #define KEY_PGDOWN case INPUT_PGDOWN:
 
+#define KEY_SHIFT_PGUP case INPUT_SHIFT_PGUP:
+#define KEY_SHIFT_PGDOWN case INPUT_SHIFT_PGDOWN:
+
 #define KEY_INSERT case INPUT_INSERT:
 #define KEY_DELETE case INPUT_DELETE:
 
