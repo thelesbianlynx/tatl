@@ -7,9 +7,9 @@
 #include "textview.h"
 #include "textaction.h"
 #include "filebuffer.h"
+#include "search.h"
 #include "input.h"
 #include "output.h"
-
 
 enum {
     ALT_NONE = 0,
@@ -32,6 +32,12 @@ void editor_init (Editor* editor, Array* filenames) {
     editor->clipboard = array_create();
     editor->dir = charbuffer_create();
     editor->tab_scroll = 0;
+    editor->tab_scroll_dmg = false;
+
+    editor->search_files = array_create();
+    editor->search_selection = 0;
+    editor->search_scroll = 0;
+    editor->search_scroll_dmg = false;
 
     char* cwd = getcwd(NULL, 0);
     assert(*cwd == '/');
@@ -59,6 +65,7 @@ void editor_fini (Editor* editor) {
     }
     array_destroy(editor->buffers);
     array_destroy(editor->clipboard);
+    array_destroy(editor->search_files);
     charbuffer_destroy(editor->dir);
 }
 
@@ -69,8 +76,104 @@ FileBuffer* get_buffer(Editor* editor) {
     return editor->buffers->data[editor->current_buffer];
 }
 
+
+//
+// Update Editor State.
+//
+
+static bool altbuffer_event (Editor* editor, InputEvent* event);
+static bool search_event (Editor* editor, InputEvent* event);
+
+bool editor_event (Editor* editor, InputEvent* event) {
+    if (editor->altmode) {
+        return altbuffer_event(editor, event);
+    }
+
+    FileBuffer* fb = get_buffer(editor);
+
+    ON_KEY(event) {
+        KEY_CTRL('Q') {
+            return false;
+        }
+
+        KEY_CTRL('W') {
+            if (editor->buffers->size <= 1) {
+                return false;
+            }
+
+            FileBuffer* rm_fb = array_remove(editor->buffers, editor->current_buffer);
+            if (editor->current_buffer >= editor->buffers->size) {
+                editor->current_buffer--;
+            }
+
+            filebuffer_destroy(rm_fb);
+            editor->tab_scroll_dmg = true;
+            break;
+        }
+
+        KEY_CTRL('N') {
+            FileBuffer* new_fb = filebuffer_create();
+            array_add(editor->buffers, new_fb);
+            editor->current_buffer = editor->buffers->size - 1;
+            editor->tab_scroll_dmg = true;
+            break;
+        }
+
+        KEY_CTRL('O') {
+            textbuffer_set_contents(editor->altbuffer, NULL);
+            editor->altmode = ALT_OPEN;
+            break;
+        }
+
+        KEY_CTRL('S') {
+            textbuffer_set_contents(editor->altbuffer, fb->longpath);
+            editor->altmode = ALT_SAVE;
+            break;
+        }
+
+        // KEY_CTRL('P') {
+        KEY_ALT_ENTER {
+            textbuffer_set_contents(editor->altbuffer, NULL);
+            search_load_files(editor->search_files, editor->dir->buffer);
+            editor->altmode = ALT_SEARCH;
+            editor->search_selection = 0;
+            editor->search_scroll = 0;
+            break;
+        }
+
+        KEY_ALT('t') {
+            editor->current_buffer++;
+            editor->tab_scroll_dmg = true;
+            break;
+        }
+
+        KEY_ALT('T') {
+            editor->current_buffer--;
+            editor->tab_scroll_dmg = true;
+            break;
+        }
+
+        default: {
+            textaction(event, fb->buffer, 1, editor->clipboard);
+            break;
+        }
+    }
+
+    if (editor->buffers->size == 0) {
+        return false;
+    }
+
+    return true;
+}
+
+// -- Alt-Mode Event Handler -- //
+
 static
 bool altbuffer_event (Editor* editor, InputEvent* event) {
+    if (editor->altmode == ALT_SEARCH) {
+        return search_event(editor, event);
+    }
+
     ON_KEY(event) {
         KEY_CTRL('Q') {
             return false;
@@ -124,82 +227,94 @@ bool altbuffer_event (Editor* editor, InputEvent* event) {
     return true;
 }
 
-bool editor_event (Editor* editor, InputEvent* event) {
-    if (editor->altmode) {
-        return altbuffer_event(editor, event);
-    }
+// -- Search-Mode Event Handler -- //
 
-    FileBuffer* fb = get_buffer(editor);
-
+static
+bool search_event (Editor* editor, InputEvent* event) {
     ON_KEY(event) {
         KEY_CTRL('Q') {
+            search_unload_files(editor->search_files);
             return false;
         }
 
-        KEY_CTRL('W') {
-            if (editor->buffers->size <= 1) {
-                return false;
+        KEY_ESC {
+            search_unload_files(editor->search_files);
+            editor->altmode = 0;
+            break;
+        }
+
+        KEY_ENTER {
+            FileEntry* entry = editor->search_files->data[editor->search_selection];
+
+            // Check if file is already open.
+            for (int i = 0; i < editor->buffers->size; i++) {
+                FileBuffer* fb = editor->buffers->data[i];
+                if (strcmp(entry->path->buffer, fb->longpath->buffer) == 0) {
+                    editor->current_buffer = i;
+                    search_unload_files(editor->search_files);
+                    editor->altmode = 0;
+                    return false;
+                }
             }
 
-            FileBuffer* rm_fb = array_remove(editor->buffers, editor->current_buffer);
-            if (editor->current_buffer >= editor->buffers->size) {
-                editor->current_buffer--;
+            // Otherwise open new file.
+            FileBuffer* fb = get_buffer(editor);
+            if (rope_len(fb->buffer->text) > 0 || fb->longpath->size > 0) {
+                fb = filebuffer_create();
+                array_add(editor->buffers, fb);
+                editor->current_buffer = editor->buffers->size - 1;
             }
 
-            filebuffer_destroy(rm_fb);
-            editor->tab_scroll_dmg = true;
+            filebuffer_read(fb, entry->path->buffer);
+
+            search_unload_files(editor->search_files);
+            editor->altmode = 0;
             break;
         }
 
-        KEY_CTRL('N') {
-            FileBuffer* new_fb = filebuffer_create();
-            array_add(editor->buffers, new_fb);
-            editor->current_buffer = editor->buffers->size - 1;
-            editor->tab_scroll_dmg = true;
+        KEY_UP {
+            editor->search_selection = MOD(editor->search_selection - 1, editor->search_files->size);
+            editor->search_scroll_dmg = true;
             break;
         }
 
-        KEY_CTRL('O') {
-            textbuffer_set_contents(editor->altbuffer, NULL);
-            editor->altmode = ALT_OPEN;
+        KEY_DOWN {
+            editor->search_selection = MOD(editor->search_selection + 1, editor->search_files->size);
+            editor->search_scroll_dmg = true;
             break;
         }
 
-        KEY_CTRL('S') {
-            textbuffer_set_contents(editor->altbuffer, fb->longpath);
-            editor->altmode = ALT_SAVE;
-            break;
-        }
-
-        KEY_CTRL('P') {
-            editor->altmode = ALT_SEARCH;
-            break;
-        }
-
-        KEY_ALT('t') {
-            editor->current_buffer++;
-            editor->tab_scroll_dmg = true;
-            break;
-        }
-
-        KEY_ALT('T') {
-            editor->current_buffer--;
-            editor->tab_scroll_dmg = true;
-            break;
-        }
+        // Don't Pass these keys to textaction.
+        KEY_SHIFT_UP { break; };
+        KEY_SHIFT_DOWN { break; };
+        KEY_CTRL_UP { break; };
+        KEY_CTRL_DOWN { break; };
+        KEY_SHIFT_CTRL_UP { break; };
+        KEY_SHIFT_CTRL_DOWN { break; };
 
         default: {
-            textaction(event, fb->buffer, 1, editor->clipboard);
+            textaction(event, editor->altbuffer, 1, editor->clipboard);
+            CharBuffer* query = charbuffer_create();
+            textbuffer_get_contents(editor->altbuffer, query);
+            search_rank_files(editor->search_files, query->buffer);
+            charbuffer_destroy(query);
+            editor->search_selection = 0;
+            editor->search_scroll = 0;
             break;
         }
-    }
-
-    if (editor->buffers->size == 0) {
-        return false;
     }
 
     return true;
 }
+
+
+//
+// Draw Editor.
+//
+
+static void build_tab_bar (Editor* editor, uint32_t width, CharBuffer* tab_bar);
+static void draw_tab_bar (Editor* editor, Box* window, CharBuffer* tab_bar, MouseEvent* mev);
+static void draw_search (Editor* editor, Box* window, MouseEvent* mev);
 
 static
 const char* prompt_string (Editor* editor) {
@@ -208,17 +323,17 @@ const char* prompt_string (Editor* editor) {
             return " (OPEN) ";
         case ALT_SAVE:
             return " (SAVE) ";
+        case ALT_SEARCH:
+            return " (SEARCH) ";
         default:
             return "";
     }
 }
 
-static void build_tab_bar (Editor* editor, uint32_t width, CharBuffer* tab_bar);
-static void draw_tab_bar (Editor* editor, Box* window, CharBuffer* tab_bar, MouseEvent* mev);
-
 void editor_draw (Editor* editor, Box* window, MouseEvent* m_event) {
     int header_size = 3;
     int altbuffer_size =  1; // editor->altmode == 0 ? 0 : 1;
+    int search_window_size = editor->altmode == ALT_SEARCH ? (window->height - header_size)/2 : 0;
 
     // Header & Tab-Bar.
     {
@@ -247,35 +362,40 @@ void editor_draw (Editor* editor, Box* window, MouseEvent* m_event) {
         FileBuffer* fb = get_buffer(editor);
         Box fb_window = {
             window->x, window->y + header_size,
-            window->width, window->height - header_size - altbuffer_size };
+            window->width, window->height - header_size - altbuffer_size - search_window_size };
         filebuffer_draw(fb, &fb_window, m_event);
     }
 
-    // Altbuffer.
+    // Altbuffer & Search Window.
     {
         const char* prompt = prompt_string(editor);
         int prompt_ln = strlen(prompt);
         if (prompt_ln > 0) {
             output_bold();
-            output_cup(window->y + window->height - altbuffer_size, window->x);
+            output_cup(window->y + window->height - altbuffer_size - search_window_size, window->x);
             output_str(prompt);
             output_normal();
 
             Box alt_window = {
-                window->x + prompt_ln, window->y + window->height - altbuffer_size,
-                window->width - prompt_ln, altbuffer_size };
+                window->x + prompt_ln, window->y + window->height - altbuffer_size - search_window_size,
+                window->width - prompt_ln, altbuffer_size + search_window_size };
             textview_draw(editor->altview, &alt_window, m_event);
 
+            if (search_window_size > 0) {
+                Box search_window = {
+                    window->x + prompt_ln - 1, window->y + window->height - search_window_size,
+                    window->width - prompt_ln, search_window_size };
+                draw_search(editor, &search_window, m_event);
+            }
         }
     }
 }
 
 
+// -- Tab Bar -- //
+
 //
-// Tab Bar
-//
-// - This code was lifted from before the rewrite.
-// - It may not be of the best quality...
+// This code was lifted from before the rewrite. It may not be of the best quality...
 
 static
 void draw_tab_bar (Editor* editor, Box* window, CharBuffer* tab_bar, MouseEvent* mev) {
@@ -448,6 +568,47 @@ void build_tab_bar (Editor* editor, uint32_t width, CharBuffer* tab_bar) {
                     charbuffer_achar(tab_bar, ' ');
                 }
             }
+        }
+    }
+}
+
+// -- Search Window -- //
+
+static
+void draw_search (Editor* editor, Box* window, MouseEvent* mev) {
+    // Mouse Input.
+    if (mev != NULL) {
+
+    }
+
+    // Scroll damage.
+    if (editor->search_scroll_dmg) {
+        if (editor->search_selection < editor->search_scroll) {
+            editor->search_scroll = editor->search_selection;
+        }
+        if (editor->search_selection > editor->search_scroll + window->height - 1) {
+            editor->search_scroll = MAX(0, editor->search_selection - window->height + 1);
+        }
+
+        editor->search_scroll_dmg = false;
+    }
+
+    for (int i = 0; i < window->height; i++) {
+        int32_t n = i + editor->search_scroll;
+        if (n >= editor->search_files->size) break;
+
+        FileEntry* file = editor->search_files->data[n];
+
+        char buf[window->width + 1];
+        snprintf(buf, window->width + 1 ," %s ", file->path->buffer + file->prefix + 1);
+
+        output_cup(window->y + i, window->x);
+        if (n == editor->search_selection) {
+            output_setbg(12);
+            output_str(buf);
+            output_normal();
+        } else {
+            output_str(buf);
         }
     }
 }

@@ -8,6 +8,8 @@
 #include "output.h"
 #include "editor.h"
 
+#include "search.h"
+#include "charbuffer.h"
 
 bool cursor_blink = false;
 
@@ -26,6 +28,26 @@ int main (int argc, char** argv) {
         array_add(filenames, argv[i]);
     }
 
+    /*
+    Array* files = array_create();
+    char* dir = getcwd(NULL,0);
+
+    search_load_files(files, dir);
+    search_rank_files(files, "rope");
+
+    printf("=======\n");
+    for (int i = 0; i < files->size; i++) {
+        FileEntry* file = files->data[i];
+        printf("%s\n", file->path->buffer);
+    }
+
+    search_unload_files(files);
+    free(dir);
+    array_destroy(files);
+
+    return 0;
+    */
+    
     //
     // Launch Editor.
     //

@@ -195,7 +195,7 @@ TextBuffer* textbuffer_create (Rope* text) {
     buffer->pre_selections = array_create();
     buffer->tab_width = 4;
     buffer->hard_tabs = false;
-    
+
     Selection* primary_sel = selection_create();
     primary_sel->primary = true;
     array_add(buffer->selections, primary_sel);
@@ -225,7 +225,6 @@ void textbuffer_destroy (TextBuffer* buffer) {
 //
 // Get/Set Contents.
 //
-
 
 static
 bool rope_char (uint32_t i, uint32_t ch, void* data) {
