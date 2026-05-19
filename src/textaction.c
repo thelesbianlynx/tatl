@@ -11,7 +11,7 @@
 void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipboard) {
 
     ON_KEY(event) {
-        // Clipboard Actions.
+        // Clipboard.
         KEY_CTRL('X') {
             textbuffer_edit_yank(buffer, clipboard, true);
             break;
@@ -44,32 +44,6 @@ void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipbo
             textbuffer_edit_duplicate_lines(buffer, i);
             break;
         }
-
-        KEY_CTRL('N') {
-            textbuffer_edit_char(buffer, 'N', i);
-            break;
-        }
-
-        // Movement
-        KEY_ALT('j') {
-
-            break;
-        }
-        KEY_ALT('k') {
-
-            break;
-        }
-        KEY_ALT('l') {
-
-            break;
-        }
-        KEY_ALT(';') {
-
-            break;
-        }
-
-        // Delete.
-
 
         // Cursor By Row.
         KEY_UP {
@@ -143,6 +117,24 @@ void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipbo
             break;
         }
 
+        // Cursor by Paragraph.
+        KEY_PGUP {
+            textbuffer_cursor_paragraph(buffer, -i, false);
+            break;
+        }
+        KEY_PGDOWN {
+            textbuffer_cursor_paragraph(buffer, i, false);
+            break;
+        }
+        KEY_SHIFT_PGUP {
+            textbuffer_cursor_paragraph(buffer, -i, true);
+            break;
+        }
+        KEY_SHIFT_PGDOWN {
+            textbuffer_cursor_paragraph(buffer, i, true);
+            break;
+        }
+
         // Move Lines.
         KEY_CTRL_UP {
             textbuffer_edit_move_lines(buffer, -i);
@@ -163,6 +155,26 @@ void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipbo
             break;
         }
 
+        // Next Match.
+        KEY_ALT_LEFT {
+            textbuffer_selection_next(buffer, -i);
+            break;
+        }
+        KEY_ALT_RIGHT {
+            textbuffer_selection_next(buffer, i);
+            break;
+        }
+
+        // Multi-Cursor by Match.
+        KEY_SHIFT_ALT_LEFT {
+            textbuffer_selection_add_next(buffer, -i);
+            break;
+        }
+        KEY_SHIFT_ALT_RIGHT {
+            textbuffer_selection_add_next(buffer, i);
+            break;
+        }
+
         // Clear Multi-Cursor.
         KEY_ESC {
             textbuffer_selection_clear(buffer);
@@ -179,15 +191,14 @@ void textaction (InputEvent* event, TextBuffer* buffer, int32_t i, Array* clipbo
             textbuffer_edit_delete(buffer, i);
             break;
         }
-        KEY_ALT('d')
         KEY_BACKSPACE {
             textbuffer_edit_backspace(buffer, i);
             break;
         }
-        // KEY_ALT('d'){
-        //     textbuffer_edit_delete(buffer, i);
-        //     break;
-        // }
+        KEY_ALT('d') {
+            textbuffer_edit_delete(buffer, i);
+            break;
+        }
         KEY_ALT('D') {
             textbuffer_edit_delete_lines(buffer, i);
             break;

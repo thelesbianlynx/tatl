@@ -28,6 +28,13 @@ struct textbuffer {
     bool text_dmg;
 };
 
+struct find_target {
+    uint32_t* codepoints;
+    uint32_t* ptable;
+    uint32_t* stable;
+    int32_t size;
+};
+
 
 TextBuffer* textbuffer_create (Rope* text);
 
@@ -94,6 +101,7 @@ void textbuffer_cursor_paragraph (TextBuffer* buffer, int32_t i, bool s);
 void textbuffer_cursor_goto (TextBuffer* buffer, int32_t row, int32_t col, bool s);
 
 
+
 void textbuffer_selection_clear (TextBuffer* buffer);
 
 void textbuffer_selection_swap (TextBuffer* buffer);
@@ -110,10 +118,20 @@ void textbuffer_selection_add_next_word (TextBuffer* buffer, int32_t i);
 void textbuffer_selection_add_next_line (TextBuffer* buffer, int32_t i);
 
 
-void textbuffer_selection_split (TextBuffer* buffer, int32_t i);
 
-void textbuffer_selection_split_rows (TextBuffer* buffer, int32_t i);
+FindTarget* find_target_create (Rope* text);
 
-void textbuffer_selection_split_words (TextBuffer* buffer, int32_t i);
+void find_target_destroy (FindTarget* target);
 
-void textbuffer_selection_split_lines (TextBuffer* buffer, int32_t i);
+
+void textbuffer_find_next (TextBuffer* buffer, FindTarget* target, int32_t i);
+
+
+
+// void textbuffer_selection_split (TextBuffer* buffer, int32_t i);
+//
+// void textbuffer_selection_split_rows (TextBuffer* buffer, int32_t i);
+//
+// void textbuffer_selection_split_words (TextBuffer* buffer, int32_t i);
+//
+// void textbuffer_selection_split_lines (TextBuffer* buffer, int32_t i);

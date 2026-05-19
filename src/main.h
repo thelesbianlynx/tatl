@@ -22,6 +22,7 @@ typedef struct filebuffer FileBuffer;
 
 typedef struct textbuffer TextBuffer;
 typedef struct selection Selection;
+typedef struct find_target FindTarget;
 typedef struct textview TextView;
 
 typedef struct rope Rope;

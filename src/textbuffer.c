@@ -14,6 +14,7 @@
 static void action_begin (TextBuffer*, uint32_t);
 static void action_end (TextBuffer*);
 
+
 //
 // Enums.
 //
@@ -76,6 +77,7 @@ void selection_destroy (Selection* sel) {
     free(sel);
 }
 
+
 //
 // Selection Macros,
 //
@@ -137,6 +139,7 @@ Selection* selection_array_clear (Array* A) {
     return primary_sel;
 }
 
+
 //
 // History Object.
 //
@@ -179,6 +182,7 @@ void hist_array_clear (Array* A) {
     }
     array_clear(A);
 }
+
 
 //
 // TextBuffer Object.
@@ -327,7 +331,6 @@ void action_end (TextBuffer* buffer) {
     buffer->cursor_dmg = true;
 }
 
-
 void textbuffer_undo (TextBuffer* buffer) {
     action_end(buffer);
 
@@ -371,6 +374,7 @@ void textbuffer_redo (TextBuffer* buffer) {
         selection_array_copy(state->selections, buffer->selections);
     }
 }
+
 
 //
 // Edit Actions.
@@ -418,7 +422,6 @@ void textbuffer_edit (TextBuffer* buffer, uint32_t i, uint32_t j, Rope* text) {
 
     update_selections(buffer, i, window);
 }
-
 
 // - Text Actions - //
 
@@ -846,6 +849,7 @@ void textbuffer_edit_replace (TextBuffer* buffer, Array* clipboard, int32_t i) {
     action_end(buffer);
 }
 
+
 //
 // Cursor Movement.
 //
@@ -986,6 +990,7 @@ void textbuffer_cursor_goto (TextBuffer* buffer, int32_t row, int32_t col, bool 
     sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
 }
 
+
 //
 // Selection Operations.
 //
@@ -1015,11 +1020,49 @@ void textbuffer_selection_swap (TextBuffer* buffer) {
 // - Search-for-Match Operations - //
 
 void textbuffer_selection_next (TextBuffer* buffer, int32_t i) {
+    while (i > 0) {
+        Selection* sel = buffer->selections-> data[buffer->selections->size - 1];
+        Rope* text = rope_substr(buffer->text, head(sel), tail(sel));
+        FindTarget* target = find_target_create(text);
+        textbuffer_find_next(buffer, target, 1);
+        find_target_destroy(target);
+        rope_destroy(text);
+        i--;
+    }
 
+    while (i < 0) {
+        Selection* sel = buffer->selections-> data[0];
+        Rope* text = rope_substr(buffer->text, head(sel), tail(sel));
+        FindTarget* target = find_target_create(text);
+        textbuffer_find_next(buffer, target, -1);
+        find_target_destroy(target);
+        rope_destroy(text);
+        i++;
+    }
 }
 
 void textbuffer_selection_add_next (TextBuffer* buffer, int32_t i) {
+    while (i > 0) {
+        Selection* sel = buffer->selections-> data[buffer->selections->size - 1];
+        array_add(buffer->selections, selection_copy(sel));
+        Rope* text = rope_substr(buffer->text, head(sel), tail(sel));
+        FindTarget* target = find_target_create(text);
+        textbuffer_find_next(buffer, target, 1);
+        find_target_destroy(target);
+        rope_destroy(text);
+        i--;
+    }
 
+    while (i < 0) {
+        Selection* sel = buffer->selections-> data[0];
+        array_insert(buffer->selections, 0, selection_copy(sel));
+        Rope* text = rope_substr(buffer->text, head(sel), tail(sel));
+        FindTarget* target = find_target_create(text);
+        textbuffer_find_next(buffer, target, -1);
+        find_target_destroy(target);
+        rope_destroy(text);
+        i++;
+    }
 }
 
 // - Multi-Cursor Operations - //
@@ -1064,4 +1107,131 @@ void textbuffer_selection_add_next_word (TextBuffer* buffer, int32_t i) {
 
 void textbuffer_selection_add_next_line (TextBuffer* buffer, int32_t i) {
 
+}
+
+
+//
+// Find.
+//
+
+// -- Generate find target. -- //
+
+
+static
+bool rope_codepoint (uint32_t i, uint32_t ch, void* data) {
+    uint32_t** codepoints = data;
+    **codepoints = ch;
+    (*codepoints)++;
+    return true;
+}
+
+FindTarget* find_target_create (Rope* text) {
+    uint32_t size = rope_len(text);
+    uint32_t* codepoints = calloc(size, sizeof(uint32_t));
+    uint32_t* ptable = calloc(size, sizeof(uint32_t));
+    uint32_t* stable = calloc(size, sizeof(uint32_t));
+
+    // Codepoints from rope.
+    {
+        uint32_t* cp = codepoints;
+        rope_foreach(text, rope_codepoint, &cp);
+    }
+
+    // Compute prefix table.
+    //  ...
+
+    // Compute suffix table.
+    //  ...
+
+    // Allocate and Initialize.
+    FindTarget* target = malloc(sizeof(FindTarget));
+    target->codepoints = codepoints;
+    target->ptable = ptable;
+    target->stable = stable;
+    target->size = size;
+    return target;
+}
+
+void find_target_destroy (FindTarget* target) {
+    free(target->codepoints);
+    free(target->ptable);
+    free(target);
+}
+
+
+// -- Find Next Occurence -- //
+
+typedef struct {
+    FindTarget* target;
+    int32_t j;
+
+    bool found;
+    int32_t location;
+} Find;
+
+static
+bool rope_find_next (uint32_t i, uint32_t ch, void* data) {
+    Find* find = data;
+
+    if (ch == find->target->codepoints[find->j]) {
+        find->j++;
+        if (find->j >= find->target->size) {
+            // Match found!
+            find->found = true;
+            find->location = i - find->target->size + 1;
+            return false;
+        }
+    } else {
+        find->j = find->target->ptable[find->j];
+    }
+
+    return true;
+}
+
+static
+bool rope_find_prev (uint32_t i, uint32_t ch, void* data) {
+    Find* find = data;
+
+    if (ch == find->target->codepoints[find->target->size - find->j - 1]) {
+        find->j++;
+        if (find->j >= find->target->size) {
+            // Match found!
+            find->found = true;
+            find->location = i;
+            return false;
+        }
+    } else {
+        find->j = find->target->stable[find->target->size - find->j - 1];
+    }
+
+    return true;
+}
+
+
+
+void textbuffer_find_next (TextBuffer* buffer, FindTarget* target, int32_t i) {
+    assert(target->size > 0);
+    if (i > 0) {
+        Selection* sel = buffer->selections-> data[buffer->selections->size - 1];
+
+        Find data = { .target = target };
+        rope_foreach_suffix(buffer->text, head(sel) + 1, rope_find_next, &data);
+
+        if (data.found) {
+            sel->anchor = data.location;
+            sel->cursor = data.location + target->size;
+            buffer->cursor_dmg = true;
+        }
+    } else if (i < 0) {
+        Selection* sel = buffer->selections-> data[0];
+
+        Find data = { .target = target };
+        rope_foreach_reverse_prefix(buffer->text, tail(sel) - 1, rope_find_prev, &data);
+
+        if (data.found) {
+            sel->anchor = data.location;
+            sel->cursor = data.location + target->size;
+            buffer->cursor_dmg = true;
+        }
+    }
 }
