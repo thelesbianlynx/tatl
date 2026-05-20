@@ -103,6 +103,12 @@ bool char_style (uint32_t i, uint32_t ch, void* d) {
     return true;
 }
 
+static
+int scroll_len (double dtime) {
+    int r = (int) (0.05/dtime);
+    if (r <= 0) r = 1;
+    return r;
+}
 
 void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     TextBuffer* buffer = view->buffer;
@@ -117,6 +123,8 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
 
     // Number of lines in buffer (at least 1).
     int32_t lines = rope_lines(buffer->text) + 1;
+
+    double t = -1;
 
     // Mouse Input.
     if (mstate != NULL) {
@@ -133,10 +141,12 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
                     textbuffer_cursor_goto(buffer, my + view->scroll_line - 1, mx + view->scroll_col - ln_width - 1, true);
                 } else if (mstate->button == 64) {
                     // Scroll Up.
-                    view->scroll_line -= 2;
+                    view->scroll_line -= scroll_len(mstate->dtime);
+                    t = mstate->dtime;
                 } else if (mstate->button == 65) {
                     // Scroll Down.
-                    view->scroll_line += 2;
+                    view->scroll_line += scroll_len(mstate->dtime);
+                    t = mstate->dtime;
                 }
             }
         }
@@ -170,7 +180,7 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     int32_t chars[text_width];
     int32_t styles[text_width];
 
-    for (int i = 0; i < text_height; i++) {
+    for (int i = 0; i < text_height-1 ; i++) {
 
         // End of Buffer.
         if (view->scroll_line + i >= lines) {
@@ -235,12 +245,12 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     }
 
     // cursor pos:
-    // char buf[64];
+    char buf[64];
     // Point c = primary;
-    // snprintf(buf, 64, "%d:%d (%d, %d) %d", c.row, c.col, p_cursor, rope_len(buffer->text), p_mem);
-    // output_cup(window->y + window->height - 1, window->x + 1);
+    snprintf(buf, 64, "%lf", t);
+    output_cup(window->y + window->height - 1, window->x + 1);
     output_normal();
-    // output_str(buf);
+    output_str(buf);
 
     // Cursor.
     // if (buffer->selections->size == 1) {

@@ -2,8 +2,17 @@
 
 #include <poll.h>
 #include <unistd.h>
+#include <time.h>
 
 static bool first_run = true;
+static double last_time;
+
+static
+double ftime () {
+    struct timespec t;
+    timespec_get(&t, TIME_UTC);
+    return (double) t.tv_sec + (double) t.tv_nsec / 1000000000.0;
+}
 
 static
 void parseCSI (const char* buffer, int n, char* ch, uint32_t* keycode, uint32_t* mods, uint32_t* button) {
@@ -99,6 +108,7 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
     *event = (InputEvent) {};
 
     if (first_run) {
+        last_time = ftime();
         first_run = false;
         return false;
     }
@@ -148,10 +158,13 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
         if (n >= 3 && buffer[0] == '\e' && buffer[1] == '[') {
             if (buffer[2] == 'M' && n >= 6) {
                 // Mouse Event.
+                double evtime = ftime();
                 event->type = INPUT_MOUSE;
                 event->m_event.button = buffer[3] - 32;
                 event->m_event.x = (uint8_t) buffer[4] - 32;
                 event->m_event.y = (uint8_t) buffer[5] - 32;
+                event->m_event.dtime = evtime - last_time;
+                last_time = evtime;
                 return true;
             }
 
@@ -161,10 +174,13 @@ bool nextkey (int32_t timeout, InputEvent* event, int32_t* debug) {
                 uint32_t x, y, button;
                 parseCSI(buffer + 3, n - 3, &c, &x, &y, &button);
                 if (c != 'm') {
+                    double evtime = ftime();
                     event->type = INPUT_MOUSE;
                     event->m_event.button = button;
                     event->m_event.x = x;
                     event->m_event.y = y;
+                    event->m_event.dtime = evtime - last_time;
+                    last_time = evtime;
                     return true;
                 }
                 return false;

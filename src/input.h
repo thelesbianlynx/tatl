@@ -88,6 +88,7 @@ enum input_event_type {
 struct mouse_event {
     uint32_t button;
     uint32_t x, y;
+    double dtime;
 };
 
 struct input_event {
