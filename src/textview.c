@@ -176,7 +176,7 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     int32_t chars[text_width];
     int32_t styles[text_width];
 
-    for (int i = 0; i < text_height-1 ; i++) {
+    for (int i = 0; i < text_height; i++) {
 
         // End of Buffer.
         if (view->scroll_line + i >= lines) {
