@@ -985,7 +985,7 @@ void textbuffer_cursor_goto (TextBuffer* buffer, int32_t row, int32_t col, bool 
     Selection* sel = selection_array_clear(buffer->selections);
     array_add(buffer->selections, sel);
 
-    sel->cursor = rope_point_to_index(buffer->text, (Point){row, col});
+    sel->cursor = rope_point_to_index(buffer->text, (Point) {row, col});
     if (!s) sel->anchor = sel->cursor;
     sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
 }
@@ -1017,86 +1017,69 @@ void textbuffer_selection_swap (TextBuffer* buffer) {
 
 }
 
-// - Search-for-Match Operations - //
+// -- Search-for-Match Operations -- //
 
 void textbuffer_selection_next (TextBuffer* buffer, int32_t i) {
-    while (i > 0) {
-        Selection* sel = buffer->selections-> data[buffer->selections->size - 1];
-        Rope* text = rope_substr(buffer->text, head(sel), tail(sel));
-        FindTarget* target = find_target_create(text);
-        textbuffer_find_next(buffer, target, 1);
-        find_target_destroy(target);
-        rope_destroy(text);
-        i--;
-    }
+    action_end(buffer);
 
-    while (i < 0) {
-        Selection* sel = buffer->selections-> data[0];
-        Rope* text = rope_substr(buffer->text, head(sel), tail(sel));
-        FindTarget* target = find_target_create(text);
-        textbuffer_find_next(buffer, target, -1);
-        find_target_destroy(target);
-        rope_destroy(text);
-        i++;
-    }
+    Selection* sel = buffer->selections-> data[buffer->selections->size - 1];
+    Rope* text = rope_substr(buffer->text, head(sel), tail(sel));
+    FindTarget* target = find_target_create(text);
+    textbuffer_find_next(buffer, target, i);
+    find_target_destroy(target);
+    rope_destroy(text);
 }
 
 void textbuffer_selection_add_next (TextBuffer* buffer, int32_t i) {
-    while (i > 0) {
-        Selection* sel = buffer->selections-> data[buffer->selections->size - 1];
-        array_add(buffer->selections, selection_copy(sel));
-        Rope* text = rope_substr(buffer->text, head(sel), tail(sel));
-        FindTarget* target = find_target_create(text);
-        textbuffer_find_next(buffer, target, 1);
-        find_target_destroy(target);
-        rope_destroy(text);
-        i--;
-    }
+    action_end(buffer);
 
-    while (i < 0) {
-        Selection* sel = buffer->selections-> data[0];
-        array_insert(buffer->selections, 0, selection_copy(sel));
-        Rope* text = rope_substr(buffer->text, head(sel), tail(sel));
-        FindTarget* target = find_target_create(text);
-        textbuffer_find_next(buffer, target, -1);
-        find_target_destroy(target);
-        rope_destroy(text);
-        i++;
-    }
+    Selection* sel = buffer->selections-> data[buffer->selections->size - 1];
+    Rope* text = rope_substr(buffer->text, head(sel), tail(sel));
+    FindTarget* target = find_target_create(text);
+    textbuffer_find_add_next(buffer, target, i);
+    find_target_destroy(target);
+    rope_destroy(text);
 }
 
-// - Multi-Cursor Operations - //
+// -- Multi-Cursor Operations -- //
 
 void textbuffer_selection_add_next_row (TextBuffer* buffer, int32_t i) {
     action_end(buffer);
 
     while (i > 0) {
         Selection* sel = array_peek(buffer->selections);
-
-        Point p = rope_index_to_point(buffer->text, sel->cursor);
-        if (p.row >= rope_lines(buffer->text)) break;
-        int32_t index = rope_point_to_index(buffer->text, (Point){p.row + 1, p.col});
-
-        Selection* new = selection_create();
-        new->anchor = new->cursor = index;
-        new->col_mem = sel->col_mem;
-        array_add(buffer->selections, new);
-
+        if (buffer->selections->size > 1 && sel->primary) {
+            // Going Backwards: remove cursors.
+            selection_destroy(array_remove(buffer->selections, 0));
+        } else {
+            Point p = rope_index_to_point(buffer->text, sel->cursor);
+            if (p.row >= rope_lines(buffer->text)) break;
+            int32_t index = rope_point_to_index(buffer->text, (Point){p.row + 1, p.col});
+    
+            Selection* new = selection_create();
+            new->anchor = new->cursor = index;
+            new->col_mem = sel->col_mem;
+            array_add(buffer->selections, new);
+        }
         i--;
     }
 
     // Backwards.
     while (i < 0) {
         Selection* sel = buffer->selections->data[0];
-        Point p = rope_index_to_point(buffer->text, sel->cursor);
-        if (p.row <= 0) break;
-        int32_t index = rope_point_to_index(buffer->text, (Point){p.row - 1, p.col});
-
-        Selection* new = selection_create();
-        new->anchor = new->cursor = index;
-        new->col_mem = sel->col_mem;
-        array_insert(buffer->selections, 0, new);
-
+        if (buffer->selections->size > 1 && sel->primary) {
+            // Going Backwards: remove cursors.
+            selection_destroy(array_pop(buffer->selections));
+        } else {
+            Point p = rope_index_to_point(buffer->text, sel->cursor);
+            if (p.row <= 0) break;
+            int32_t index = rope_point_to_index(buffer->text, (Point){p.row - 1, p.col});
+    
+            Selection* new = selection_create();
+            new->anchor = new->cursor = index;
+            new->col_mem = sel->col_mem;
+            array_insert(buffer->selections, 0, new);
+        }
         i++;
     }
 }
@@ -1155,6 +1138,7 @@ FindTarget* find_target_create (Rope* text) {
 void find_target_destroy (FindTarget* target) {
     free(target->codepoints);
     free(target->ptable);
+    free(target->stable);
     free(target);
 }
 
@@ -1207,31 +1191,112 @@ bool rope_find_prev (uint32_t i, uint32_t ch, void* data) {
     return true;
 }
 
-
-
 void textbuffer_find_next (TextBuffer* buffer, FindTarget* target, int32_t i) {
+    action_end(buffer);
     assert(target->size > 0);
-    if (i > 0) {
-        Selection* sel = buffer->selections-> data[buffer->selections->size - 1];
+
+    while (i > 0) {
+        Selection* sel = array_peek(buffer->selections);
+        int32_t sentinel = -1;
+        if (buffer->selections->size > 1 && sel->primary) {
+            // Going Backwards.
+            sel = buffer->selections->data[0];
+            sentinel = head(buffer->selections->data[1]);
+        }
 
         Find data = { .target = target };
         rope_foreach_suffix(buffer->text, head(sel) + 1, rope_find_next, &data);
 
         if (data.found) {
-            sel->anchor = data.location;
-            sel->cursor = data.location + target->size;
-            buffer->cursor_dmg = true;
+            if (sentinel >= 0 && data.location + target->size > sentinel) {
+                // Sentinel boundary crossed: remove cursor.
+                //  -> must remove 'going backwards' cursor.
+                selection_destroy(array_remove(buffer->selections, 0));
+            } else {
+                sel->anchor = data.location;
+                sel->cursor = data.location + target->size;
+                buffer->cursor_dmg = true;
+            }
+        } else {
+            i = 0;
+            break;
         }
-    } else if (i < 0) {
-        Selection* sel = buffer->selections-> data[0];
+        i--;
+    }
+    while (i < 0) {
+        Selection* sel = buffer->selections->data[0];
+        int32_t sentinel = -1;
+        if (buffer->selections->size > 1 && sel->primary) {
+            // Going Backwards.
+            sel = array_peek(buffer->selections);
+            sentinel = tail(buffer->selections->data[buffer->selections->size - 2]);
+        }
 
         Find data = { .target = target };
         rope_foreach_reverse_prefix(buffer->text, tail(sel) - 1, rope_find_prev, &data);
 
         if (data.found) {
-            sel->anchor = data.location;
-            sel->cursor = data.location + target->size;
-            buffer->cursor_dmg = true;
+            if (sentinel >= 0 && data.location < sentinel) {
+                // Sentinel boundary crossed: remove cursor.
+                //  -> must remove 'going backwards' cursor.
+                selection_destroy(array_pop(buffer->selections));
+            } else {
+                sel->anchor = data.location;
+                sel->cursor = data.location + target->size;
+                buffer->cursor_dmg = true;
+            }
+        } else {
+            i = 0;
+            break;
         }
+        i++;
+    }
+}
+
+void textbuffer_find_add_next (TextBuffer* buffer, FindTarget* target, int32_t i) {
+    action_end(buffer);
+    assert(target->size > 0);
+
+    while (i > 0) {
+        Selection* sel = array_peek(buffer->selections);
+        if (buffer->selections->size > 1 && sel->primary) {
+            // Going Backwards: remove cursors.
+            selection_destroy(array_remove(buffer->selections, 0));
+        } else {
+            Find data = { .target = target };
+            rope_foreach_suffix(buffer->text, head(sel) + 1, rope_find_next, &data);
+    
+            if (data.found) {
+                array_add(buffer->selections, sel = selection_copy(sel));
+                sel->anchor = data.location;
+                sel->cursor = data.location + target->size;
+                buffer->cursor_dmg = true;
+            } else {
+                i = 0;
+                break;
+            }
+        }
+        i--;
+    }
+    while (i < 0) {
+        Selection* sel = buffer->selections->data[0];
+        if (buffer->selections->size > 1 && sel->primary) {
+            // Going Backwards: remove cursors.
+            selection_destroy(array_pop(buffer->selections));
+        } else {
+            Find data = { .target = target };
+            rope_foreach_reverse_prefix(buffer->text, tail(sel) - 1, rope_find_prev, &data);
+    
+            if (data.found) {
+                array_insert(buffer->selections, 0, sel = selection_copy(sel));
+                sel->anchor = data.location;
+                sel->cursor = data.location + target->size;
+                buffer->cursor_dmg = true;
+            } else {
+                i = 0;
+                break;
+            }
+        }
+        i++;
     }
 }

@@ -126,6 +126,7 @@ void find_target_destroy (FindTarget* target);
 
 void textbuffer_find_next (TextBuffer* buffer, FindTarget* target, int32_t i);
 
+void textbuffer_find_add_next (TextBuffer* buffer, FindTarget* target, int32_t i);
 
 
 // void textbuffer_selection_split (TextBuffer* buffer, int32_t i);

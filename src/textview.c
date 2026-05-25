@@ -124,8 +124,6 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     // Number of lines in buffer (at least 1).
     int32_t lines = rope_lines(buffer->text) + 1;
 
-    double t = -1;
-
     // Mouse Input.
     if (mstate != NULL) {
         int32_t mx = mstate->x, my = mstate->y;
@@ -142,11 +140,9 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
                 } else if (mstate->button == 64) {
                     // Scroll Up.
                     view->scroll_line -= scroll_len(mstate->dtime);
-                    t = mstate->dtime;
                 } else if (mstate->button == 65) {
                     // Scroll Down.
                     view->scroll_line += scroll_len(mstate->dtime);
-                    t = mstate->dtime;
                 }
             }
         }
@@ -244,21 +240,6 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
         }
     }
 
-    // cursor pos:
-    char buf[64];
-    // Point c = primary;
-    snprintf(buf, 64, "%lf", t);
-    output_cup(window->y + window->height - 1, window->x + 1);
     output_normal();
-    output_str(buf);
-
-    // Cursor.
-    // if (buffer->selections->size == 1) {
-    //     Point c = rope_index_to_point(buffer->text, ((Selection*) buffer->selections->data[0])->cursor);
-    //     output_cvvis();
-    //     output_cup(c.row + window->y - view->scroll_line, c.col + window->x + ln_width - view->scroll_col);
-    // } else {
-        output_civis();
-    // }
-
+    output_civis();
 }
