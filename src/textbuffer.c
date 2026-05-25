@@ -383,15 +383,15 @@ void textbuffer_redo (TextBuffer* buffer) {
 // -- Cursor Manipulation -- //
 
 static
-void update_selections (TextBuffer* buffer, uint32_t index, int32_t window) {
+void update_selections (TextBuffer* buffer, uint32_t index, int32_t window, int32_t total) {
     for (int i = 0; i < buffer->selections->size; i++) {
         Selection* sel = buffer->selections->data[i];
         if (sel->cursor >= index) {
-            sel->cursor = MAX(index, sel->cursor + window);
+            sel->cursor = MAX(index + total, sel->cursor + window);
             sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
         }
         if (sel->anchor >= index) {
-            sel->anchor = MAX(index, sel->anchor + window);
+            sel->anchor = MAX(index + total, sel->anchor + window);
         }
     }
 }
@@ -399,7 +399,10 @@ void update_selections (TextBuffer* buffer, uint32_t index, int32_t window) {
 static
 void textbuffer_edit (TextBuffer* buffer, uint32_t i, uint32_t j, Rope* text) {
     if (i > j) i = j;
+
     int32_t window = i - j;
+    int32_t total = 0;
+
     Rope* a = rope_prefix(buffer->text, i);
     Rope* b = rope_suffix(buffer->text, j);
     Rope* c;
@@ -411,7 +414,8 @@ void textbuffer_edit (TextBuffer* buffer, uint32_t i, uint32_t j, Rope* text) {
         d = rope_append(a, text);
         c = rope_append(d, b);
         rope_destroy(d);
-        window += rope_len(text);
+        total = rope_len(text);
+        window += total;
     }
 
     rope_destroy(a);
@@ -420,7 +424,7 @@ void textbuffer_edit (TextBuffer* buffer, uint32_t i, uint32_t j, Rope* text) {
     rope_destroy(buffer->text);
     buffer->text = c;
 
-    update_selections(buffer, i, window);
+    update_selections(buffer, i, window, total);
 }
 
 // - Text Actions - //
@@ -451,7 +455,7 @@ void textbuffer_edit_char (TextBuffer* buffer, uint32_t ch, int32_t i) {
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
         textbuffer_edit(buffer, head(sel), tail(sel), text);
-        sel->anchor = sel->cursor;
+        // sel->anchor = sel->cursor = tail(sel);
     }
 
     rope_destroy(text);
