@@ -10,6 +10,12 @@ struct editor {
     TextBuffer* altbuffer;
     TextView* altview;
 
+    TextBuffer* findbuffer;
+    TextView* findview;
+
+    TextBuffer* replacebuffer;
+    TextView* replaceview;
+
     CharBuffer* dir;
 
     Array* clipboard;

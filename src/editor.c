@@ -29,6 +29,14 @@ void editor_init (Editor* editor, Array* filenames) {
     editor->altview = textview_create(editor->altbuffer);
     editor->altview->linenos = false;
 
+    editor->findbuffer = textbuffer_create(rope_create(NULL));
+    editor->findview = textview_create(editor->findbuffer);
+    editor->findview->linenos = false;
+
+    editor->replacebuffer = textbuffer_create(rope_create(NULL));
+    editor->replaceview = textview_create(editor->replacebuffer);
+    editor->replaceview->linenos = false;
+
     editor->clipboard = array_create();
     editor->dir = charbuffer_create();
     editor->tab_scroll = 0;
@@ -63,6 +71,16 @@ void editor_fini (Editor* editor) {
     for (int i = 0; i < editor->clipboard->size; i++) {
         rope_destroy(editor->clipboard->data[i]);
     }
+
+    textview_destroy(editor->altview);
+    textbuffer_destroy(editor->altbuffer);
+
+    textview_destroy(editor->findview);
+    textbuffer_destroy(editor->findbuffer);
+
+    textview_destroy(editor->replaceview);
+    textbuffer_destroy(editor->replacebuffer);
+
     array_destroy(editor->buffers);
     array_destroy(editor->clipboard);
     array_destroy(editor->search_files);
@@ -83,6 +101,8 @@ FileBuffer* get_buffer(Editor* editor) {
 
 static bool altbuffer_event (Editor* editor, InputEvent* event);
 static bool search_event (Editor* editor, InputEvent* event);
+static bool find_event (Editor* editor, InputEvent* event);
+static bool replace_event (Editor* editor, InputEvent* event);
 
 bool editor_event (Editor* editor, InputEvent* event) {
     if (editor->altmode) {
@@ -131,13 +151,24 @@ bool editor_event (Editor* editor, InputEvent* event) {
             break;
         }
 
-        // KEY_CTRL('P') {
         KEY_ALT_ENTER {
             textbuffer_set_contents(editor->altbuffer, NULL);
             search_load_files(editor->search_files, editor->dir->buffer);
             editor->altmode = ALT_SEARCH;
             editor->search_selection = 0;
             editor->search_scroll = 0;
+            break;
+        }
+
+        KEY_CTRL('F') {
+            textbuffer_set_contents(editor->altbuffer, NULL); // Temp?
+            editor->altmode = ALT_FIND;
+            break;
+        }
+
+        KEY_CTRL('R') {
+            textbuffer_set_contents(editor->altbuffer, NULL); // Temp?
+            editor->altmode = ALT_REPLACE;
             break;
         }
 
@@ -170,8 +201,16 @@ bool editor_event (Editor* editor, InputEvent* event) {
 
 static
 bool altbuffer_event (Editor* editor, InputEvent* event) {
-    if (editor->altmode == ALT_SEARCH) {
-        return search_event(editor, event);
+    switch (editor->altmode) {
+        case ALT_SEARCH: {
+            return search_event(editor, event);
+        }
+        case ALT_FIND: {
+            return find_event(editor, event);
+        }
+        case ALT_REPLACE: {
+            return replace_event(editor, event);
+        }
     }
 
     ON_KEY(event) {
@@ -285,12 +324,16 @@ bool search_event (Editor* editor, InputEvent* event) {
         }
 
         // Don't Pass these keys to textaction.
-        KEY_SHIFT_UP { break; };
-        KEY_SHIFT_DOWN { break; };
-        KEY_CTRL_UP { break; };
-        KEY_CTRL_DOWN { break; };
-        KEY_SHIFT_CTRL_UP { break; };
-        KEY_SHIFT_CTRL_DOWN { break; };
+        KEY_SHIFT_UP { break; }
+        KEY_SHIFT_DOWN { break; }
+        KEY_CTRL_UP { break; }
+        KEY_CTRL_DOWN { break; }
+        KEY_SHIFT_CTRL_UP { break; }
+        KEY_SHIFT_CTRL_DOWN { break; }
+        KEY_ALT_UP { break; }
+        KEY_ALT_DOWN { break; }
+        KEY_SHIFT_ALT_UP { break; }
+        KEY_SHIFT_ALT_DOWN { break; }
 
         default: {
             textaction(event, editor->altbuffer, 1, editor->clipboard);
@@ -300,6 +343,146 @@ bool search_event (Editor* editor, InputEvent* event) {
             charbuffer_destroy(query);
             editor->search_selection = 0;
             editor->search_scroll = 0;
+            break;
+        }
+    }
+
+    return true;
+}
+
+// -- Find-Mode Event Handler -- //
+
+static
+bool find_event (Editor* editor, InputEvent* event) {
+    FileBuffer* fb = get_buffer(editor);    
+    ON_KEY(event) {
+        KEY_CTRL('A') {
+            return false;
+        }
+
+        KEY_ESC {
+            editor->altmode = 0;
+            break;
+        }
+
+        KEY_CTRL('R') {
+            editor->altmode = ALT_REPLACE;
+            break;
+        }
+
+        // Don't Pass these keys to textaction.
+        KEY_UP { break; }
+        KEY_DOWN { break; }
+        KEY_SHIFT_UP { break; }
+        KEY_SHIFT_DOWN { break; }
+        KEY_CTRL_UP { break; }
+        KEY_CTRL_DOWN { break; }
+        KEY_SHIFT_CTRL_UP { break; }
+        KEY_SHIFT_CTRL_DOWN { break; }
+        KEY_ALT_UP { break; }
+        KEY_ALT_DOWN { break; }
+        KEY_SHIFT_ALT_UP { break; }
+        KEY_SHIFT_ALT_DOWN { break; }
+
+
+        // Find Next:
+        KEY_ENTER
+        KEY_CTRL('F')
+        KEY_ALT_RIGHT {
+            if (rope_len(editor->altbuffer->text) <= 0) break;
+            FindTarget* target = find_target_create(editor->altbuffer->text);
+            textbuffer_find_next(fb->buffer, target, 1);
+            find_target_destroy(target);
+            break;
+        }
+
+        // Find Previous:
+        KEY_CTRL('G')
+        KEY_ALT_LEFT {
+            if (rope_len(editor->altbuffer->text) <= 0) break;
+            FindTarget* target = find_target_create(editor->altbuffer->text);
+            textbuffer_find_next(fb->buffer, target, -1);
+            find_target_destroy(target);
+            break;
+        }
+
+        // Find+Add Next:
+        KEY_SHIFT_ALT_RIGHT {
+            if (rope_len(editor->altbuffer->text) <= 0) break;
+            FindTarget* target = find_target_create(editor->altbuffer->text);
+            textbuffer_find_add_next(fb->buffer, target, 1);
+            find_target_destroy(target);
+            break;
+        }
+
+        // Find+Add Previous:
+        KEY_SHIFT_ALT_LEFT {
+            if (rope_len(editor->altbuffer->text) <= 0) break;
+            FindTarget* target = find_target_create(editor->findbuffer->text);
+            textbuffer_find_add_next(fb->buffer, target, -1);
+            find_target_destroy(target);
+            break;
+        }
+
+        default: {
+            textaction(event, editor->altbuffer, 1, editor->clipboard);
+            break;
+        }
+    }
+
+    return true;
+}
+
+// -- Replace-Mode Event Handler -- //
+
+static
+bool replace_event (Editor* editor, InputEvent* event) {
+    FileBuffer* fb = get_buffer(editor);
+    ON_KEY(event) {
+        KEY_CTRL('Q') {
+            return false;
+        }
+
+        KEY_ESC {
+            editor->altmode = 0;
+            break;
+        }
+
+        KEY_CTRL('F') {
+            editor->altmode = ALT_FIND;
+            break;
+        }
+
+        KEY_ENTER {
+            Array* contents = array_create();
+            // textbuffer_edit_yank(fb->buffer, contents, false);
+            // // ... Pattern Replace
+            
+            // Temporary static replace.
+            array_add(contents, editor->altbuffer->text);
+            textbuffer_edit_replace(fb->buffer, contents, 1);
+
+            array_destroy(contents);
+            editor->altmode = 0;
+            break;
+        }
+
+        // Don't Pass these keys to textaction.
+        KEY_UP { break; }
+        KEY_DOWN { break; }
+        KEY_SHIFT_UP { break; }
+        KEY_SHIFT_DOWN { break; }
+        KEY_CTRL_UP { break; }
+        KEY_CTRL_DOWN { break; }
+        KEY_SHIFT_CTRL_UP { break; }
+        KEY_SHIFT_CTRL_DOWN { break; }
+        KEY_ALT_UP { break; }
+        KEY_ALT_DOWN { break; }
+        KEY_SHIFT_ALT_UP { break; }
+        KEY_SHIFT_ALT_DOWN { break; }
+
+        default: {
+            textaction(event, editor->altbuffer, 1, editor->clipboard);
             break;
         }
     }
@@ -325,6 +508,10 @@ const char* prompt_string (Editor* editor) {
             return " (SAVE) ";
         case ALT_SEARCH:
             return " (SEARCH) ";
+        case ALT_FIND:
+            return " (FIND) ";
+        case ALT_REPLACE:
+            return " (REPLACE) ";
         default:
             return "";
     }
@@ -378,7 +565,7 @@ void editor_draw (Editor* editor, Box* window, MouseEvent* m_event) {
 
             Box alt_window = {
                 window->x + prompt_ln, window->y + window->height - altbuffer_size - search_window_size,
-                window->width - prompt_ln, altbuffer_size + search_window_size };
+                window->width - prompt_ln, altbuffer_size };
             textview_draw(editor->altview, &alt_window, m_event);
 
             if (search_window_size > 0) {

@@ -1028,9 +1028,11 @@ void textbuffer_selection_next (TextBuffer* buffer, int32_t i) {
 
     Selection* sel = buffer->selections-> data[buffer->selections->size - 1];
     Rope* text = rope_substr(buffer->text, head(sel), tail(sel));
-    FindTarget* target = find_target_create(text);
-    textbuffer_find_next(buffer, target, i);
-    find_target_destroy(target);
+    if (rope_len(text) > 0) {
+        FindTarget* target = find_target_create(text);
+        textbuffer_find_next(buffer, target, i);
+        find_target_destroy(target);
+    }
     rope_destroy(text);
 }
 
@@ -1039,9 +1041,11 @@ void textbuffer_selection_add_next (TextBuffer* buffer, int32_t i) {
 
     Selection* sel = buffer->selections-> data[buffer->selections->size - 1];
     Rope* text = rope_substr(buffer->text, head(sel), tail(sel));
-    FindTarget* target = find_target_create(text);
-    textbuffer_find_add_next(buffer, target, i);
-    find_target_destroy(target);
+    if (rope_len(text) > 0) {
+        FindTarget* target = find_target_create(text);
+        textbuffer_find_add_next(buffer, target, i);
+        find_target_destroy(target);
+    }
     rope_destroy(text);
 }
 

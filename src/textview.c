@@ -139,10 +139,10 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
                     textbuffer_cursor_goto(buffer, my + view->scroll_line - 1, mx + view->scroll_col - ln_width - 1, true);
                 } else if (mstate->button == 64) {
                     // Scroll Up.
-                    view->scroll_line -= scroll_len(mstate->dtime);
+                    view->scroll_line -= MIN(5, scroll_len(mstate->dtime));
                 } else if (mstate->button == 65) {
                     // Scroll Down.
-                    view->scroll_line += scroll_len(mstate->dtime);
+                    view->scroll_line += MIN(5, scroll_len(mstate->dtime));
                 }
             }
         }
