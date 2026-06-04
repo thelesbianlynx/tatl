@@ -150,15 +150,18 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
 
     // Update Scroll.
     if (buffer->cursor_dmg) {
+        // Which cursor to follow.
+        Selection* sel = buffer->selections->data[0];
+        if (sel->primary) sel = array_peek(buffer->selections);
+
         // Scroll Line.
-        int32_t top = rope_index_to_point(buffer->text, ((Selection*) buffer->selections->data[0])->cursor).row;
-        //int32_t bot = rope_index_to_point(buffer->text, ((Selection*) array_peek(buffer->selections))->cursor).row;
+        int32_t row = rope_index_to_point(buffer->text, sel->cursor).row;
         if (text_height == 1) {
-            view->scroll_line = top;
-        } else if (top < view->scroll_line) {
-            view->scroll_line = top;
-        } else if (top > view->scroll_line + text_height - 2) {
-            view->scroll_line = MAX(0, top - text_height + 2);
+            view->scroll_line = row;
+        } else if (row < view->scroll_line) {
+            view->scroll_line = row;
+        } else if (row > view->scroll_line + text_height - 2) {
+            view->scroll_line = MAX(0, row - text_height + 2);
         }
 
         // Scroll Column

@@ -418,7 +418,7 @@ bool find_event (Editor* editor, InputEvent* event) {
         // Find+Add Previous:
         KEY_SHIFT_ALT_LEFT {
             if (rope_len(editor->altbuffer->text) <= 0) break;
-            FindTarget* target = find_target_create(editor->findbuffer->text);
+            FindTarget* target = find_target_create(editor->altbuffer->text);
             textbuffer_find_add_next(fb->buffer, target, -1);
             find_target_destroy(target);
             break;
