@@ -205,7 +205,7 @@ void split_buffer (IntBuffer* src, Array* A) {
 
 Rope* rope_create (IntBuffer* src) {
     // Create Empty Rope.
-    if (src == NULL) {
+    if (src == NULL || src->size == 0) {
         return rope_new(NULL);
     }
 
