@@ -455,7 +455,6 @@ void textbuffer_edit_char (TextBuffer* buffer, uint32_t ch, int32_t i) {
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
         textbuffer_edit(buffer, head(sel), tail(sel), text);
-        // sel->anchor = sel->cursor = tail(sel);
     }
 
     rope_destroy(text);
@@ -470,7 +469,6 @@ void textbuffer_edit_text (TextBuffer* buffer, Rope* text, int32_t i) {
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
         textbuffer_edit(buffer, head(sel), tail(sel), text);
-        //sel->anchor = sel->cursor;
     }
 
     // Atomic Action.
@@ -858,10 +856,30 @@ void textbuffer_edit_replace (TextBuffer* buffer, Array* clipboard, int32_t i) {
 // Cursor Movement.
 //
 
+static inline
+void sync_cursors (TextBuffer* buffer, int32_t i) {
+    for (int x = 0; x < buffer->selections->size; x++) {
+        Selection* sel = buffer->selections->data[x];
+        int32_t h = head(sel);
+        int32_t t = tail(sel);
+        if (i < 0) {
+            sel->cursor = h;
+            sel->anchor = t;
+        } else if (i > 0) {
+            sel->cursor = t;
+            sel->anchor = h;
+        }
+    }
+    // Don't update column-memory here since this function should only
+    // be called from other functions that will move the cursor anyway.
+}
+
+
 // - Cursor by Row/Column - //
 
 void textbuffer_cursor_col (TextBuffer* buffer, int32_t i, bool s) {
     action_end(buffer);
+    sync_cursors(buffer, i);
 
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
@@ -875,6 +893,7 @@ void textbuffer_cursor_col (TextBuffer* buffer, int32_t i, bool s) {
 
 void textbuffer_cursor_row (TextBuffer* buffer, int32_t i, bool s) {
     action_end(buffer);
+    sync_cursors(buffer, i);
 
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
@@ -886,7 +905,7 @@ void textbuffer_cursor_row (TextBuffer* buffer, int32_t i, bool s) {
 
 // - Cursor by Word Boundary - //
 
-struct by_word_data{
+struct by_word_data {
     uint32_t chtype;
     uint32_t index;
 };
@@ -912,6 +931,7 @@ bool by_word_reverse (uint32_t i, uint32_t ch, void* d) {
 
 void textbuffer_cursor_word (TextBuffer* buffer, int32_t i, bool s) {
     action_end(buffer);
+    sync_cursors(buffer, i);
 
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
@@ -950,6 +970,7 @@ void textbuffer_cursor_word (TextBuffer* buffer, int32_t i, bool s) {
 
 void textbuffer_cursor_line (TextBuffer* buffer, int32_t i, bool s) {
     action_end(buffer);
+    sync_cursors(buffer, i);
 
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
@@ -979,6 +1000,8 @@ void textbuffer_cursor_line (TextBuffer* buffer, int32_t i, bool s) {
 // - Other Cursor Movement - //
 
 void textbuffer_cursor_paragraph (TextBuffer* buffer, int32_t i, bool s) {
+    action_end(buffer);
+    sync_cursors(buffer, i);
 
 }
 
