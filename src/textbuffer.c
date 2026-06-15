@@ -879,7 +879,7 @@ void sync_cursors (TextBuffer* buffer, int32_t i) {
 
 void textbuffer_cursor_col (TextBuffer* buffer, int32_t i, bool s) {
     action_end(buffer);
-    sync_cursors(buffer, i);
+    if (!s) sync_cursors(buffer, i);
 
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
@@ -893,7 +893,7 @@ void textbuffer_cursor_col (TextBuffer* buffer, int32_t i, bool s) {
 
 void textbuffer_cursor_row (TextBuffer* buffer, int32_t i, bool s) {
     action_end(buffer);
-    sync_cursors(buffer, i);
+    if (!s) sync_cursors(buffer, i);
 
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
@@ -931,7 +931,7 @@ bool by_word_reverse (uint32_t i, uint32_t ch, void* d) {
 
 void textbuffer_cursor_word (TextBuffer* buffer, int32_t i, bool s) {
     action_end(buffer);
-    sync_cursors(buffer, i);
+    if (!s) sync_cursors(buffer, i);
 
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
@@ -970,7 +970,7 @@ void textbuffer_cursor_word (TextBuffer* buffer, int32_t i, bool s) {
 
 void textbuffer_cursor_line (TextBuffer* buffer, int32_t i, bool s) {
     action_end(buffer);
-    sync_cursors(buffer, i);
+    if (!s) sync_cursors(buffer, i);
 
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
@@ -1001,7 +1001,7 @@ void textbuffer_cursor_line (TextBuffer* buffer, int32_t i, bool s) {
 
 void textbuffer_cursor_paragraph (TextBuffer* buffer, int32_t i, bool s) {
     action_end(buffer);
-    sync_cursors(buffer, i);
+    if (!s) sync_cursors(buffer, i);
 
 }
 
