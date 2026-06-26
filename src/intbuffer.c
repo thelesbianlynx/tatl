@@ -1,7 +1,7 @@
 #include "intbuffer.h"
 
 #include "charbuffer.h"
-#include "codepoint.h"
+#include "character.h"
 
 static
 void intbuffer_expand (IntBuffer* buffer) {

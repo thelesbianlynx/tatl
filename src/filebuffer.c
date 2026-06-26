@@ -5,7 +5,7 @@
 #include "rope.h"
 #include "textbuffer.h"
 #include "textview.h"
-#include "codepoint.h"
+#include "character.h"
 #include "output.h"
 
 

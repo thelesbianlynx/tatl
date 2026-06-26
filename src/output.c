@@ -5,7 +5,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include "codepoint.h"
+#include "character.h"
 
 static struct termios term_save;
 

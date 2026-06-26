@@ -292,7 +292,7 @@ bool search_event (Editor* editor, InputEvent* event) {
                     editor->current_buffer = i;
                     search_unload_files(editor->search_files);
                     editor->altmode = 0;
-                    return false;
+                    goto brck;
                 }
             }
 
@@ -308,7 +308,7 @@ bool search_event (Editor* editor, InputEvent* event) {
 
             search_unload_files(editor->search_files);
             editor->altmode = 0;
-            break;
+            brck: break;
         }
 
         KEY_UP {

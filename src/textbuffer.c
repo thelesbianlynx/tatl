@@ -3,7 +3,7 @@
 #include "array.h"
 #include "charbuffer.h"
 #include "intbuffer.h"
-#include "codepoint.h"
+#include "character.h"
 #include "rope.h"
 
 
@@ -18,13 +18,6 @@ static void action_end (TextBuffer*);
 //
 // Enums.
 //
-
-// Character Type.
-enum {
-    CHARTYPE_WS,
-    CHARTYPE_TEXT,
-    CHARTYPE_SYMBOL,
-};
 
 // Action Type.
 enum {
@@ -428,20 +421,6 @@ void textbuffer_edit (TextBuffer* buffer, uint32_t i, uint32_t j, Rope* text) {
 }
 
 // - Text Actions - //
-
-static
-uint32_t chartype (uint32_t ch) {
-    // Whitespace.
-    if (ch <= ' ')
-        return CHARTYPE_WS;
-
-    // Text (Letters and Numbers).
-    if (('0' <= ch && ch <= '9') || ('A' <= ch && ch <= 'Z' ) || ('a' <= ch && ch <= 'z') || ch == '_' || ch > 127)
-        return CHARTYPE_TEXT;
-
-    // Symbol (The rest).
-    return CHARTYPE_SYMBOL;
-}
 
 void textbuffer_edit_char (TextBuffer* buffer, uint32_t ch, int32_t i) {
     action_begin(buffer, chartype(ch));
@@ -1086,7 +1065,7 @@ void textbuffer_selection_add_next_row (TextBuffer* buffer, int32_t i) {
             Point p = rope_index_to_point(buffer->text, sel->cursor);
             if (p.row >= rope_lines(buffer->text)) break;
             int32_t index = rope_point_to_index(buffer->text, (Point){p.row + 1, p.col});
-    
+
             Selection* new = selection_create();
             new->anchor = new->cursor = index;
             new->col_mem = sel->col_mem;
@@ -1105,7 +1084,7 @@ void textbuffer_selection_add_next_row (TextBuffer* buffer, int32_t i) {
             Point p = rope_index_to_point(buffer->text, sel->cursor);
             if (p.row <= 0) break;
             int32_t index = rope_point_to_index(buffer->text, (Point){p.row - 1, p.col});
-    
+
             Selection* new = selection_create();
             new->anchor = new->cursor = index;
             new->col_mem = sel->col_mem;
@@ -1296,7 +1275,7 @@ void textbuffer_find_add_next (TextBuffer* buffer, FindTarget* target, int32_t i
         } else {
             Find data = { .target = target };
             rope_foreach_suffix(buffer->text, head(sel) + 1, rope_find_next, &data);
-    
+
             if (data.found) {
                 array_add(buffer->selections, sel = selection_copy(sel));
                 sel->anchor = data.location;
@@ -1317,7 +1296,7 @@ void textbuffer_find_add_next (TextBuffer* buffer, FindTarget* target, int32_t i
         } else {
             Find data = { .target = target };
             rope_foreach_reverse_prefix(buffer->text, tail(sel) - 1, rope_find_prev, &data);
-    
+
             if (data.found) {
                 array_insert(buffer->selections, 0, sel = selection_copy(sel));
                 sel->anchor = data.location;

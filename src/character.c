@@ -1,5 +1,27 @@
-#include "codepoint.h"
+#include "character.h"
 
+
+//
+// Character Type.
+//
+
+uint32_t chartype (int32_t ch) {
+    // Whitespace.
+    if (ch <= ' ')
+        return CHARTYPE_WS;
+
+    // Text (Letters and Numbers).
+    if (('0' <= ch && ch <= '9') || ('A' <= ch && ch <= 'Z' ) || ('a' <= ch && ch <= 'z') || ch == '_' || ch > 127)
+        return CHARTYPE_TEXT;
+
+    // Symbol (The rest).
+    return CHARTYPE_SYMBOL;
+}
+
+
+//
+// Codepoint Conversion.
+//
 
 int32_t codepoint_to_chars (char* buffer, uint32_t code) {
     if (code <= 0x7F) {
@@ -34,18 +56,15 @@ int32_t codepoint_to_chars (char* buffer, uint32_t code) {
 
 int32_t chars_to_codepoint (char* buffer, uint32_t len, uint32_t* code) {
     if ((unsigned char) buffer[0] <= 127) {
-        //printf("%x\n", (int) buffer[0]);
         *code = buffer[0];
         return 1;
     }
 
-    if ((buffer[0] & 0xF0) == 0xF0) {
-        if (len < 4) return 0;
-        *code = (((unsigned char) buffer[0] & ~0xF0) << 18)
-            |   (((unsigned char) buffer[1] & ~0x80) << 12)
-            |   (((unsigned char) buffer[2] & ~0x80) << 6)
-            |    ((unsigned char) buffer[3] & ~0x80);
-        return 4;
+    if ((buffer[0] & 0xC0) == 0xC0) {
+        if (len < 2) return 0;
+        *code = (((unsigned char) buffer[0] ^ 0xC0) << 6)
+            |    ((unsigned char) buffer[1] ^ 0x80);
+        return 2;
     }
 
     if ((buffer[0] & 0xE0) == 0xE0) {
@@ -56,11 +75,13 @@ int32_t chars_to_codepoint (char* buffer, uint32_t len, uint32_t* code) {
         return 3;
     }
 
-    if ((buffer[0] & 0xC0) == 0xC0) {
-        if (len < 2) return 0;
-        *code = (((unsigned char) buffer[0] ^ 0xC0) << 6)
-            |    ((unsigned char) buffer[1] ^ 0x80);
-        return 2;
+    if ((buffer[0] & 0xF0) == 0xF0) {
+        if (len < 4) return 0;
+        *code = (((unsigned char) buffer[0] & ~0xF0) << 18)
+            |   (((unsigned char) buffer[1] & ~0x80) << 12)
+            |   (((unsigned char) buffer[2] & ~0x80) << 6)
+            |    ((unsigned char) buffer[3] & ~0x80);
+        return 4;
     }
 
     return 0;
