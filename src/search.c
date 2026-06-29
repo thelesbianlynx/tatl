@@ -15,22 +15,23 @@ static
 bool filter_file (const char* filename) {
     CharBuffer* buf = charbuffer_create();
     charbuffer_astr(buf, filename);
+    bool r = true;
 
     if (buf->size >= 2) {
         // Ignore object (.o) files.
-        if (buf->buffer[buf->size-1] == 'o' && buf->buffer[buf->size - 2] == '.') return false;
+        if (buf->buffer[buf->size-1] == 'o' && buf->buffer[buf->size - 2] == '.') r = false;
         // Ignore static library (.a) files.
-        if (buf->buffer[buf->size-1] == 'a' && buf->buffer[buf->size - 2] == '.') return false;
+        if (buf->buffer[buf->size-1] == 'a' && buf->buffer[buf->size - 2] == '.') r = false;
     }
 
     if (buf->size >= 3) {
         // Ignore shared object (.so) files.
         if (buf->buffer[buf->size-1] == 'o' && buf->buffer[buf->size - 2] == 's'
-            && buf->buffer[buf->size - 3] == '.') return false;
+            && buf->buffer[buf->size - 3] == '.') r = false;
     }
 
     charbuffer_destroy(buf);
-    return true;
+    return r;
 }
 
 static
@@ -41,8 +42,14 @@ void get_files (Array* files, const char* path, uint32_t prefix) {
 
     for (int i = 0; i < n; i++) {
         struct dirent* entry = entry_list[i];
-        if (*entry->d_name == '.') continue;
-        if (!filter_file(entry->d_name)) continue;
+        if (*entry->d_name == '.') {
+            free(entry);
+            continue;
+        }
+        if (!filter_file(entry->d_name)) {
+            free(entry);
+            continue;
+        }
 
         CharBuffer* subdir = charbuffer_create();
         charbuffer_astr(subdir, path);
@@ -65,6 +72,8 @@ void get_files (Array* files, const char* path, uint32_t prefix) {
             file->title = len;
             array_add(files, file);
         }
+
+        free(entry);
     }
 
     free(entry_list);

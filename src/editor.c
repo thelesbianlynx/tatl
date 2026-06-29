@@ -81,9 +81,11 @@ void editor_fini (Editor* editor) {
     textview_destroy(editor->replaceview);
     textbuffer_destroy(editor->replacebuffer);
 
+    search_unload_files(editor->search_files);
+    array_destroy(editor->search_files);
+
     array_destroy(editor->buffers);
     array_destroy(editor->clipboard);
-    array_destroy(editor->search_files);
     charbuffer_destroy(editor->dir);
 }
 
