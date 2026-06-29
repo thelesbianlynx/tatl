@@ -19,6 +19,8 @@
 typedef struct editor Editor;
 
 typedef struct filebuffer FileBuffer;
+typedef struct colorizer Colorizer;
+typedef struct state State;
 
 typedef struct textbuffer TextBuffer;
 typedef struct selection Selection;

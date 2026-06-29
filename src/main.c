@@ -8,12 +8,67 @@
 #include "output.h"
 #include "editor.h"
 
-#include "search.h"
-#include "charbuffer.h"
+#include "colorizer.h"
 
 bool cursor_blink = false;
+State* test_state;
 
 int main (int argc, char** argv) {
+    // Initialize Test State.
+    test_state = state_create();
+    state_append(test_state, "//", STYLE_COMMENT);
+
+    state_append(test_state, "int", STYLE_KEYWORD); 
+    state_append(test_state, "long", STYLE_KEYWORD);
+    state_append(test_state, "short", STYLE_KEYWORD);
+    state_append(test_state, "float", STYLE_KEYWORD);
+    state_append(test_state, "double", STYLE_KEYWORD);
+    state_append(test_state, "bool", STYLE_KEYWORD);
+    state_append(test_state, "char", STYLE_KEYWORD);
+    state_append(test_state, "signed", STYLE_KEYWORD);
+    state_append(test_state, "unsigned", STYLE_KEYWORD);
+    state_append(test_state, "true", STYLE_KEYWORD);
+    state_append(test_state, "false", STYLE_KEYWORD);
+    state_append(test_state, "void", STYLE_KEYWORD);
+    state_append(test_state, "if", STYLE_KEYWORD);
+    state_append(test_state, "else", STYLE_KEYWORD);
+    state_append(test_state, "switch", STYLE_KEYWORD);
+    state_append(test_state, "case", STYLE_KEYWORD);
+    state_append(test_state, "default", STYLE_KEYWORD);
+    state_append(test_state, "do", STYLE_KEYWORD);
+    state_append(test_state, "for", STYLE_KEYWORD);
+    state_append(test_state, "while", STYLE_KEYWORD);
+    state_append(test_state, "break", STYLE_KEYWORD);
+    state_append(test_state, "continue", STYLE_KEYWORD);
+    state_append(test_state, "return", STYLE_KEYWORD);
+    state_append(test_state, "goto", STYLE_KEYWORD);
+    state_append(test_state, "auto", STYLE_KEYWORD);
+    state_append(test_state, "register", STYLE_KEYWORD);
+    state_append(test_state, "static", STYLE_KEYWORD);
+    state_append(test_state, "extern", STYLE_KEYWORD);
+    state_append(test_state, "const", STYLE_KEYWORD);
+    state_append(test_state, "volitile", STYLE_KEYWORD);
+    state_append(test_state, "sizeof", STYLE_KEYWORD);
+    state_append(test_state, "struct", STYLE_KEYWORD);
+    state_append(test_state, "union", STYLE_KEYWORD);
+    state_append(test_state, "enum", STYLE_KEYWORD);
+    state_append(test_state, "typedef", STYLE_KEYWORD);
+    state_append(test_state, "inline", STYLE_KEYWORD);
+    state_append(test_state, "restrict", STYLE_KEYWORD);
+
+    state_append(test_state, "(", STYLE_SYMBOL);
+    state_append(test_state, ")", STYLE_SYMBOL);
+    state_append(test_state, "[", STYLE_SYMBOL);
+    state_append(test_state, "]", STYLE_SYMBOL);
+    state_append(test_state, "{", STYLE_SYMBOL);
+    state_append(test_state, "}", STYLE_SYMBOL);
+    state_append(test_state, ";", STYLE_SYMBOL);
+    state_append(test_state, ":", STYLE_SYMBOL);
+    state_append(test_state, ".", STYLE_SYMBOL);
+    state_append(test_state, ",", STYLE_SYMBOL);
+    state_append(test_state, "*", STYLE_SYMBOL);
+    state_append(test_state, "->", STYLE_SYMBOL);
+
     //
     // Process Arguments
     //
@@ -90,4 +145,6 @@ int main (int argc, char** argv) {
 
     output_cnorm();
     output_fini();
+
+    state_destroy(test_state);
 }

@@ -5,6 +5,7 @@
 #include "output.h"
 #include "rope.h"
 #include "textbuffer.h"
+#include "colorizer.h"
 
 
 TextView* textview_create (TextBuffer* buffer) {
@@ -37,68 +38,65 @@ uint32_t tail (Selection* sel) {
 extern bool cursor_blink;
 struct draw_char_data {
     int32_t* chars;
-    uint32_t i_chars;
-
     int32_t* styles;
-    uint32_t i_styles;
+    
+    uint32_t col_start;
+    uint32_t col_end;
+    uint32_t col;
 
-    uint32_t scroll_col;
-    uint32_t col_width;
-    uint32_t i_col;
-
-    Array* selections;
     uint32_t tab_width;
+    Colorizer* colorizer;
+    Array* selections;
 };
 
 static
 bool char_style (uint32_t i, uint32_t ch, void* d) {
     struct draw_char_data* data = d;
-    if (data->i_chars >= data->col_width) return true;
+    //if (data->col >= data->col_end) return true;
 
     // Cursor Style.
     int32_t style = 0;
     for (int x = 0; x < data->selections->size; x++) {
         Selection* sel = data->selections->data[x];
-        if (head(sel) <= i && i < tail(sel)) style |= 1;
-        if (i == sel->cursor /*&& data->selections->size > 1*/ && !cursor_blink) style |= 2;
+        if (head(sel) <= i && i < tail(sel)) style |= STYLE_SELECTION;
+        if (i == sel->cursor && !cursor_blink) style |= STYLE_CURSOR;
     }
 
-    // Colorizer Logic.
-    //  ....
-
-    // Emit Character and Style.
+    // -- Emit Character and Style -- //
 
     // Special case: Hard Tab.
     if (ch == '\t') {
-        int t = data->tab_width - (data->i_col % data->tab_width);
+        int t = data->tab_width - (data->col % data->tab_width);
         for (int x = 0; x < t; x++) {
-            if (data->i_chars >= data->col_width) return true;
-            if (data->i_col >= data->scroll_col){
-                data->chars[data->i_chars] = ' ';
-                data->styles[data->i_chars] |= style;
-                data->i_chars++;
+            if (data->col < data->col_end && data->col >= data->col_start) {
+                uint32_t c = data->col - data->col_start;
+                data->chars[c] = ' ';
+                data->styles[c] |= style;
             }
-            data->i_col++;
+            data->col++;
         }
     }
-    // Special case: Control Character.
+    // Special case: Control Character (print as whitespace for now).
     else if (ch < 32) {
-        if (data->i_col >= data->scroll_col){
-            data->chars[data->i_chars] = ' ';
-            data->styles[data->i_chars] |= style;
-            data->i_chars++;
+        if (data->col < data->col_end && data->col >= data->col_start) {
+            uint32_t c = data->col - data->col_start;
+            data->chars[c] = ' ';
+            data->styles[c] |= style;
         }
-        data->i_col++;
+        data->col++;
     }
     // General case: Regular Character.
     else {
-        if (data->i_col >= data->scroll_col){
-            data->chars[data->i_chars] = ch;
-            data->styles[data->i_chars] |= style;
-            data->i_chars++;
+        if (data->col < data->col_end && data->col >= data->col_start) {
+            uint32_t c = data->col - data->col_start;
+            data->chars[c] = ch;
+            data->styles[c] |= style;
         }
-        data->i_col++;
+        data->col++;
     }
+
+    // Colorizer Logic.
+    colorize_next_char(data->colorizer, ch, data->col, data->col_start, data->col_end, data->styles);
 
     return true;
 }
@@ -109,6 +107,8 @@ int scroll_len (double dtime) {
     if (r <= 0) r = 1;
     return r;
 }
+
+extern State* test_state;
 
 void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     TextBuffer* buffer = view->buffer;
@@ -179,6 +179,9 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     int32_t chars[text_width];
     int32_t styles[text_width];
 
+    // tmp
+    Colorizer colorizer = {.state_start = test_state};
+
     for (int i = 0; i < text_height; i++) {
 
         // End of Buffer.
@@ -204,15 +207,17 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
         memset(chars, 0, sizeof chars);
         memset(styles, 0, sizeof styles);
         struct draw_char_data data = {
-            .scroll_col = view->scroll_col,
-            .col_width = text_width,
             .chars = chars,
             .styles = styles,
-            .selections = buffer->selections,
+            .col_start = view->scroll_col,
+            .col_end = view->scroll_col + text_width,
             .tab_width = buffer->tab_width,
+            .selections = buffer->selections,
+            .colorizer = &colorizer,
         };
 
         // Get Line Content and Style.
+        colorize_begin_line(&colorizer);
         rope_foreach_substr(buffer->text, start, end, char_style, &data);
         char_style(end, '\n', &data);
 
@@ -228,13 +233,25 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
             // Set style.
             if (style != current_style) {
                 output_normal();
-                current_style= style;
+                current_style = style;
 
-                if (style & 1) {
+                if (style & STYLE_SELECTION) {
                     output_setbg(12);
                 }
-                if (style & 2) {
+                if (style & STYLE_CURSOR) {
                     output_underline();
+                }
+                if (style & STYLE_SYMBOL) {
+                    output_bold();
+                    //output_setfg(14);
+                }
+                if (style & STYLE_KEYWORD) {
+                    //output_bold();
+                    output_setfg(14);
+                }
+                if (style & STYLE_COMMENT) {
+                    output_italic();
+                    output_setfg(11);
                 }
             }
             // Put character.
