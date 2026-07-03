@@ -86,6 +86,7 @@ void colorize_begin_line (Colorizer* colorizer, int32_t comment_depth) {
     colorizer->col_last = 0;
     colorizer->string_type = 0;
     colorizer->comment_depth = comment_depth;
+    colorizer->text_len = 0;
     colorizer->line_comment = false;
     colorizer->saw_slash = false;
 }
@@ -102,7 +103,7 @@ void apply_color (int32_t color_mask, uint32_t col, uint32_t col_last, uint32_t 
 }
 
 static
-uint32_t get_color (Colorizer* colorizer) {
+uint32_t get_color (Colorizer* colorizer, uint32_t default_color) {
     // Comment Style Highest Priority.
     if (colorizer->line_comment || colorizer->comment_depth > 0)
         return STYLE_COMMENT;
@@ -114,7 +115,7 @@ uint32_t get_color (Colorizer* colorizer) {
         return STYLE_CHAR;
 
     // Default.
-    return 0;
+    return default_color;
 }
 
 // NOTE: col represents the column immediatly after the emited char, not the column of the char itself
@@ -127,7 +128,30 @@ void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_
         return;
     }
 
+    // Current Colorizer State.
     State* state = colorizer->state_current;
+
+    // Special case: keyword handling.
+    uint32_t chtype = chartype(ch);
+    if (chtype == CHARTYPE_TEXT) {
+        if (colorizer->text_len == 0 && 'A' <= ch && ch <= 'Z') {
+            colorizer->text_caps = true;
+        }
+        colorizer->text_len++;
+    } else {
+        if (state->terminal && state->type == STATE_KEYWORD && state->depth == colorizer->text_len) {
+            apply_color(get_color(colorizer, STYLE_KEYWORD), col - 1, col - colorizer->text_len - 1, col_start, col_end, style);
+            colorizer->col_last = col - 1;
+        } else if (colorizer->text_caps) {
+            apply_color(get_color(colorizer, STYLE_NAME), col - 1, col - colorizer->text_len - 1, col_start, col_end, style);
+            colorizer->col_last = col - 1;
+        }
+
+        colorizer->text_len = 0;
+        colorizer->text_caps = false;
+    }
+
+    // Next Colorizer State.
     State* next = next_state(state, ch);
     
     if (next == NULL) {
@@ -137,7 +161,7 @@ void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_
         //}
 
         // col_last is no greater than (col - 1) so this will do nothing in that case.
-        apply_color(get_color(colorizer), col - 1, colorizer->col_last, col_start, col_end, style);
+        apply_color(get_color(colorizer, 0), col - 1, colorizer->col_last, col_start, col_end, style);
         colorizer->col_last = col - 1;
         
         // Try from start state.
@@ -148,6 +172,7 @@ void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_
         if (next->terminal) {
             bool end_string = false;
             bool end_comment = false;
+            uint32_t default_color = 0;
 
             switch(next->type) {
                 case STATE_LINE_COMMENT: {
@@ -199,8 +224,12 @@ void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_
                     }
                     break;
                 }
+                case STATE_SYMBOL: {
+                    default_color = STYLE_SYMBOL;
+                    break;
+                }
             }
-            apply_color(get_color(colorizer), col, colorizer->col_last, col_start, col_end, style);
+            apply_color(get_color(colorizer, default_color), col, colorizer->col_last, col_start, col_end, style);
             colorizer->col_last = col;
 
             if (end_string) colorizer->string_type = 0;
@@ -209,11 +238,11 @@ void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_
         colorizer->state_current = next;
     } else {
         colorizer->state_current = colorizer->state_start;
-        apply_color(get_color(colorizer), col, colorizer->col_last, col_start, col_end, style);
+        apply_color(get_color(colorizer, 0), col, colorizer->col_last, col_start, col_end, style);
         colorizer->col_last = col;
     }
 
-    if (ch == '\\') {
+    if (ch == '\\' && !colorizer->saw_slash) {
         colorizer->saw_slash = true;
     } else {
         colorizer->saw_slash = false;

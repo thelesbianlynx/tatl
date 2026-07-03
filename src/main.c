@@ -22,7 +22,6 @@ int main (int argc, char** argv) {
     state_append(test_state, "\"", STATE_STRING);
     state_append(test_state, "'",  STATE_CHAR);
 
-/*
     state_append(test_state, "int", STATE_KEYWORD); 
     state_append(test_state, "long", STATE_KEYWORD);
     state_append(test_state, "short", STATE_KEYWORD);
@@ -67,13 +66,13 @@ int main (int argc, char** argv) {
     state_append(test_state, "]", STATE_SYMBOL);
     state_append(test_state, "{", STATE_SYMBOL);
     state_append(test_state, "}", STATE_SYMBOL);
+    state_append(test_state, "#", STATE_SYMBOL);
     state_append(test_state, ";", STATE_SYMBOL);
     state_append(test_state, ":", STATE_SYMBOL);
+    state_append(test_state, "?", STATE_SYMBOL);
     state_append(test_state, ".", STATE_SYMBOL);
     state_append(test_state, ",", STATE_SYMBOL);
-    state_append(test_state, "*", STATE_SYMBOL);
     state_append(test_state, "->", STATE_SYMBOL);
-*/
 
     //
     // Process Arguments

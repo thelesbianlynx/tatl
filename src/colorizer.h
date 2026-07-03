@@ -43,6 +43,8 @@ struct colorizer {
     uint32_t col_last;
     int32_t string_type;
     int32_t comment_depth;
+    int32_t text_len;
+    bool text_caps;
     bool line_comment;
     bool saw_slash;
 };

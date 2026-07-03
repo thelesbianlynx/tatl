@@ -289,6 +289,9 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
                     output_bold();
                     output_setfg(11);
                 }
+                if (style & STYLE_NAME) {
+                    output_setfg(10);
+                }
                 if (style & STYLE_COMMENT) {
                     output_italic();
                     output_setfg(13);
@@ -297,7 +300,7 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
                     output_setfg(9);
                 }
                 if (style & STYLE_CHAR) {
-                    output_setfg(10);
+                    output_setfg(3);
                 }
             }
             // Put character.
