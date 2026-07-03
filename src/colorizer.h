@@ -18,6 +18,8 @@ enum {
     STATE_LINE_COMMENT,
     STATE_BEGIN_COMMENT,
     STATE_END_COMMENT,
+    STATE_PUSH_COMMENT,
+    STATE_POP_COMMENT,
     STATE_STRING,
     STATE_CHAR,
     STATE_KEYWORD,
@@ -28,6 +30,7 @@ enum {
 struct state {
     int32_t ch;
     uint32_t type;
+    uint32_t depth;
     bool terminal;
 
     Array* next_state;
@@ -38,7 +41,10 @@ struct colorizer {
     State* state_current;
 
     uint32_t col_last;
-    bool comment;
+    int32_t string_type;
+    int32_t comment_depth;
+    bool line_comment;
+    bool saw_slash;
 };
 
 State* state_create ();
@@ -48,9 +54,10 @@ void state_destroy (State* state);
 
 void state_append (State* state, const char* str, uint32_t type);
 
+void state_print (State* state, uint32_t lvl);
 
 
-void colorize_begin_line (Colorizer* colorizer);
+void colorize_begin_line (Colorizer* colorizer, int32_t comment_depth);
 
 void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_t col_start, uint32_t col_end, int32_t* style);
 

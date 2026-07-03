@@ -26,6 +26,8 @@ struct textbuffer {
 
     bool cursor_dmg;
     bool text_dmg;
+
+    Array* line_state;
 };
 
 struct find_target {

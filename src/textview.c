@@ -102,6 +102,13 @@ bool char_style (uint32_t i, uint32_t ch, void* d) {
 }
 
 static
+bool char_style_fast (uint32_t i, uint32_t ch, void* d) {
+    Colorizer* colorizer = d;
+    colorize_next_char_fast(colorizer, ch);
+    return true;
+}
+
+static
 int scroll_len (double dtime) {
     int r = (int) (0.05/dtime);
     if (r <= 0) r = 1;
@@ -179,8 +186,30 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     int32_t chars[text_width];
     int32_t styles[text_width];
 
-    // tmp
+    // Colorizer data.
     Colorizer colorizer = {.state_start = test_state};
+
+    // Pre-fill buffer line-state array up to first line.
+    while (buffer->line_state->size < view->scroll_line) {
+        // Line number to fill in.
+        int32_t line = buffer->line_state->size;
+
+        // Line Start State.
+        int32_t start_state = 0;
+        if (line > 0) {
+            start_state = (int32_t)(intptr_t) buffer->line_state->data[line-1];
+        }
+
+        // Line Start and End.
+        int32_t start = rope_point_to_index(buffer->text, (Point) {line, 0});
+        int32_t end = rope_point_to_index(buffer->text, (Point) {line, INT_MAX});
+
+        // Fill in.
+        colorize_begin_line(&colorizer, start_state);
+        rope_foreach_substr(buffer->text, start, end, char_style_fast, &colorizer);
+        char_style_fast(end, '\n', &colorizer);
+        array_add(buffer->line_state, (void*)(intptr_t) colorizer.comment_depth);
+    }
 
     for (int i = 0; i < text_height; i++) {
 
@@ -192,6 +221,13 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
         // Start and end of line.
         int32_t start = rope_point_to_index(buffer->text, (Point) {view->scroll_line + i, 0});
         int32_t end = rope_point_to_index(buffer->text, (Point) {view->scroll_line + i, INT_MAX});
+
+        // Line Start State.
+        int32_t start_state = 0;
+        assert(buffer->line_state->size >= view->scroll_line + i && "Invalid line state array");
+        if (view->scroll_line + i > 0) {
+            start_state = (int32_t)(intptr_t) buffer->line_state->data[view->scroll_line + i - 1];
+        }
 
         // Line number.
         output_cup(window->y + i, window->x);
@@ -217,9 +253,13 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
         };
 
         // Get Line Content and Style.
-        colorize_begin_line(&colorizer);
+        colorize_begin_line(&colorizer, start_state);
         rope_foreach_substr(buffer->text, start, end, char_style, &data);
         char_style(end, '\n', &data);
+
+        // Buffer line state if not filled in.
+        if (buffer->line_state->size <= view->scroll_line + i)
+            array_add(buffer->line_state, (void*) (intptr_t) colorizer.comment_depth);
 
         //  Write Line Content.
         int32_t current_style = 0;
@@ -243,15 +283,21 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
                 }
                 if (style & STYLE_SYMBOL) {
                     output_bold();
-                    //output_setfg(14);
+                    output_setfg(14);
                 }
                 if (style & STYLE_KEYWORD) {
-                    //output_bold();
-                    output_setfg(14);
+                    output_bold();
+                    output_setfg(11);
                 }
                 if (style & STYLE_COMMENT) {
                     output_italic();
-                    output_setfg(11);
+                    output_setfg(13);
+                }
+                if (style & STYLE_STRING) {
+                    output_setfg(9);
+                }
+                if (style & STYLE_CHAR) {
+                    output_setfg(10);
                 }
             }
             // Put character.

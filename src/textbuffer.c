@@ -202,10 +202,13 @@ TextBuffer* textbuffer_create (Rope* text) {
     buffer->cursor_dmg = false;
     buffer->text_dmg = false;
 
+    buffer->line_state = array_create();
+
     return buffer;
 }
 
 void textbuffer_destroy (TextBuffer* buffer) {
+    array_destroy(buffer->line_state);
     selection_destroy(selection_array_clear(buffer->selections));
     selection_destroy(selection_array_clear(buffer->pre_selections));
     array_destroy(buffer->selections);
@@ -247,6 +250,8 @@ void textbuffer_reset (TextBuffer* buffer) {
 
     sel->cursor = sel->anchor = sel->col_mem = 0;
     array_add(buffer->selections, sel);
+
+    array_clear(buffer->line_state);
 
     action_begin(buffer, ACTION_EDIT);
     action_end(buffer);
@@ -341,6 +346,7 @@ void textbuffer_undo (TextBuffer* buffer) {
         // -> Text.
         rope_destroy(buffer->text);
         buffer->text = rope_copy(state->text);
+        array_clear(buffer->line_state);
 
         // -> Selections.
         selection_destroy(selection_array_clear(buffer->selections));
@@ -361,6 +367,7 @@ void textbuffer_redo (TextBuffer* buffer) {
         // -> Text.
         rope_destroy(buffer->text);
         buffer->text = rope_copy(state->text);
+        array_clear(buffer->line_state);
 
         // -> Selections.
         selection_destroy(selection_array_clear(buffer->selections));
@@ -418,6 +425,10 @@ void textbuffer_edit (TextBuffer* buffer, uint32_t i, uint32_t j, Rope* text) {
     buffer->text = c;
 
     update_selections(buffer, i, window, total);
+
+    int32_t line = rope_index_to_point(buffer->text, i).row;
+    line = MIN(line, buffer->line_state->size);
+    buffer->line_state->size = line;
 }
 
 // - Text Actions - //

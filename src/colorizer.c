@@ -12,6 +12,7 @@ State* state_create () {
     State* state = malloc(sizeof(State));
     state->ch = 0;
     state->type = 0;
+    state->depth = 0;
     state->terminal = false;
     state->next_state = array_create();
     return state;
@@ -41,6 +42,7 @@ void state_append (State* state, const char* str, uint32_t type) {
         if (next == NULL) {
             next = state_create();
             next->ch = ch;
+            next->depth = state->depth + 1;
             array_add(state->next_state, next);
         }
 
@@ -52,8 +54,7 @@ void state_append (State* state, const char* str, uint32_t type) {
     state->terminal = true;
 }
 
-static 
-void state_print (State* state, int lvl) {
+void state_print (State* state, uint32_t lvl) {
     // Indentation level.
     for (int i = 0; i < lvl; i++) printf("  ");
 
@@ -80,14 +81,19 @@ State* next_state (State* current, int32_t ch) {
 // Colorizer Logic.
 //
 
-void colorize_begin_line (Colorizer* colorizer) {
-    colorizer->comment = false;
-    colorizer->col_last = 0;
+void colorize_begin_line (Colorizer* colorizer, int32_t comment_depth) {
     colorizer->state_current = colorizer->state_start;
+    colorizer->col_last = 0;
+    colorizer->string_type = 0;
+    colorizer->comment_depth = comment_depth;
+    colorizer->line_comment = false;
+    colorizer->saw_slash = false;
 }
 
 static
 void apply_color (int32_t color_mask, uint32_t col, uint32_t col_last, uint32_t col_start, uint32_t col_end, int32_t* style) {
+    if (style == NULL) return;
+
     for (int c = col_last; c < col; c++) {
         if (c < col_end && c >= col_start) {
             style[c] |= color_mask;
@@ -95,12 +101,27 @@ void apply_color (int32_t color_mask, uint32_t col, uint32_t col_last, uint32_t 
     }
 }
 
+static
+uint32_t get_color (Colorizer* colorizer) {
+    // Comment Style Highest Priority.
+    if (colorizer->line_comment || colorizer->comment_depth > 0)
+        return STYLE_COMMENT;
+
+    // String Type.
+    if (colorizer->string_type > 0)
+        return STYLE_STRING;
+    if (colorizer->string_type < 0)
+        return STYLE_CHAR;
+
+    // Default.
+    return 0;
+}
 
 // NOTE: col represents the column immediatly after the emited char, not the column of the char itself
 //  (This is because of tabs, see textview.c) 
 void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_t col_start, uint32_t col_end, int32_t* style) {
     // Special case: line comment.
-    if (colorizer->comment) {
+    if (colorizer->line_comment) {
         apply_color(STYLE_COMMENT, col, colorizer->col_last, col_start, col_end, style);
         colorizer->col_last = col;
         return;
@@ -116,7 +137,7 @@ void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_
         //}
 
         // col_last is no greater than (col - 1) so this will do nothing in that case.
-        apply_color(0, col - 1, colorizer->col_last, col_start, col_end, style);
+        apply_color(get_color(colorizer), col - 1, colorizer->col_last, col_start, col_end, style);
         colorizer->col_last = col - 1;
         
         // Try from start state.
@@ -125,16 +146,77 @@ void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_
 
     if (next != NULL) {
         if (next->terminal) {
-            if (next->type == STYLE_COMMENT) {
-                colorizer->comment = true;
+            bool end_string = false;
+            bool end_comment = false;
+
+            switch(next->type) {
+                case STATE_LINE_COMMENT: {
+                    if (colorizer->string_type != 0) break;
+                    colorizer->line_comment = true;
+                    break;
+                }
+                case STATE_BEGIN_COMMENT: {
+                    if (colorizer->string_type != 0) break;
+                    colorizer->comment_depth = 1;
+                    break;
+                }
+                case STATE_END_COMMENT: {
+                    if (colorizer->string_type != 0) break;
+                    end_comment = true;
+                    break;
+                }
+                case STATE_PUSH_COMMENT: {
+                    if (colorizer->string_type != 0) break;
+                    colorizer->comment_depth += 1;
+                    break;
+                }
+                case STATE_POP_COMMENT: {
+                    if (colorizer->string_type != 0) break;
+                    if (colorizer->comment_depth > 0) {
+                        if (colorizer->comment_depth == 1) {
+                            end_comment = true;
+                        } else {
+                            colorizer->comment_depth -= 1;
+                        }
+                    } 
+                    break;
+                }
+                case STATE_STRING: {
+                    if (colorizer->line_comment || colorizer->comment_depth > 0) break;
+                    if (colorizer->string_type == 0) {
+                        colorizer->string_type = 1;
+                    } else if (colorizer->string_type > 0 && !colorizer->saw_slash) {
+                        end_string = true;
+                    }
+                    break;
+                }
+                case STATE_CHAR: {
+                    if (colorizer->line_comment || colorizer->comment_depth > 0) break;
+                    if (colorizer->string_type == 0) {
+                        colorizer->string_type = -1;
+                    } else if (colorizer->string_type < 0 && !colorizer->saw_slash) {
+                        end_string = true;
+                    }
+                    break;
+                }
             }
-            apply_color(next->type, col, colorizer->col_last, col_start, col_end, style);
+            apply_color(get_color(colorizer), col, colorizer->col_last, col_start, col_end, style);
             colorizer->col_last = col;
+
+            if (end_string) colorizer->string_type = 0;
+            if (end_comment) colorizer->comment_depth = 0;
         }
         colorizer->state_current = next;
     } else {
         colorizer->state_current = colorizer->state_start;
+        apply_color(get_color(colorizer), col, colorizer->col_last, col_start, col_end, style);
         colorizer->col_last = col;
+    }
+
+    if (ch == '\\') {
+        colorizer->saw_slash = true;
+    } else {
+        colorizer->saw_slash = false;
     }
 
     /* if (next != NULL) {
@@ -196,4 +278,8 @@ void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_
         style[*i] |= 8;
         (*i)++;
     } */
+}
+
+void colorize_next_char_fast (Colorizer* colorizer, int32_t ch) {
+    colorize_next_char(colorizer, ch, 0, 0, 0, NULL);
 }
