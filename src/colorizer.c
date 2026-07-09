@@ -121,6 +121,11 @@ uint32_t get_color (Colorizer* colorizer, uint32_t default_color) {
 // NOTE: col represents the column immediatly after the emited char, not the column of the char itself
 //  (This is because of tabs, see textview.c) 
 void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_t col_start, uint32_t col_end, int32_t* style) {
+    // No start state: colorizer disabled.
+    if (colorizer->state_start == NULL) {
+        return;
+    }
+
     // Special case: line comment.
     if (colorizer->line_comment) {
         apply_color(STYLE_COMMENT, col, colorizer->col_last, col_start, col_end, style);

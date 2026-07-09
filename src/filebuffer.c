@@ -7,6 +7,7 @@
 #include "textview.h"
 #include "character.h"
 #include "output.h"
+#include "mode.h"
 
 
 FileBuffer* filebuffer_create () {
@@ -132,6 +133,8 @@ bool filebuffer_read (FileBuffer* fb, const char* path) {
     textview_destroy(fb->view);
     fb->view = textview_create(fb->buffer);
 
+    textbuffer_set_mode(fb->buffer, get_language_mode(fb->title->buffer));
+
     return true;
 }
 
@@ -169,12 +172,17 @@ void filebuffer_draw (FileBuffer* fb, Box* window, MouseEvent* mev) {
         uint32_t line = window->y + window->height - 1;
         uint32_t width = window->width;
 
+        const char* mode_name = "Text";
+        if (fb->buffer->mode != NULL) {
+            mode_name = fb->buffer->mode->name;
+        }
+
         char buf[width+1];
         char left[width+1];
 
         Point P = {};
         textbuffer_primary_point(fb->buffer, &P);
-        snprintf(left, width + 1, "%s  %d:%d", "Text", P.row + 1, P.col + 1);
+        snprintf(left, width + 1, "%s  %d:%d", mode_name, P.row + 1, P.col + 1);
 
         output_cup(line, window->x);
         output_setfg(13);

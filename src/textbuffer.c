@@ -5,6 +5,7 @@
 #include "intbuffer.h"
 #include "character.h"
 #include "rope.h"
+#include "mode.h"
 
 
 //
@@ -203,6 +204,7 @@ TextBuffer* textbuffer_create (Rope* text) {
     buffer->text_dmg = false;
 
     buffer->line_state = array_create();
+    buffer->mode = NULL;
 
     return buffer;
 }
@@ -286,6 +288,12 @@ void textbuffer_primary_point (TextBuffer* buffer, Point* P) {
     }
 }
 
+void textbuffer_set_mode (TextBuffer* buffer, Mode* mode) {
+    buffer->mode = mode;
+    if (mode != NULL && mode->force_hard_tabs) {
+        buffer->hard_tabs = true;
+    }
+}
 
 //
 // Undo/Redo and Action tracking.

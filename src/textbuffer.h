@@ -28,6 +28,7 @@ struct textbuffer {
     bool text_dmg;
 
     Array* line_state;
+    Mode* mode;
 };
 
 struct find_target {
@@ -48,6 +49,8 @@ void textbuffer_get_contents (TextBuffer* buffer, CharBuffer* contents);
 void textbuffer_set_contents (TextBuffer* buffer, CharBuffer* contents);
 
 void textbuffer_primary_point (TextBuffer* buffer, Point* P);
+
+void textbuffer_set_mode (TextBuffer* buffer, Mode* mode);
 
 
 void textbuffer_undo (TextBuffer* buffer);

@@ -6,6 +6,7 @@
 #include "rope.h"
 #include "textbuffer.h"
 #include "colorizer.h"
+#include "mode.h"
 
 
 TextView* textview_create (TextBuffer* buffer) {
@@ -115,8 +116,6 @@ int scroll_len (double dtime) {
     return r;
 }
 
-extern State* test_state;
-
 void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     TextBuffer* buffer = view->buffer;
 
@@ -187,7 +186,7 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     int32_t styles[text_width];
 
     // Colorizer data.
-    Colorizer colorizer = {.state_start = test_state};
+    Colorizer colorizer = { .state_start = buffer->mode == NULL ? NULL : buffer->mode->colorizer_state };
 
     // Pre-fill buffer line-state array up to first line.
     while (buffer->line_state->size < view->scroll_line) {
