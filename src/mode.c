@@ -16,7 +16,7 @@
 
 static
 Mode* c_mode () {
-    static Mode mode = { .name = "C" };
+    static Mode mode = { .name = "C", .strict_words = true, .color_capitals = true };
     INIT_GUARD(mode);
 
     State* state = state_create();
@@ -79,7 +79,6 @@ Mode* c_mode () {
     state_append(state, "->", STATE_SYMBOL);
 
     mode.colorizer_state = state;
-
     return &mode;
 }
 
@@ -89,6 +88,60 @@ Mode* c_mode () {
 
 // - Makefile Mode - //
 
+static
+Mode* make_mode () {
+    static Mode mode = { .name = "Makefile", .force_hard_tabs = true , .color_capitals = true };
+    INIT_GUARD(mode)
+
+    State* state = state_create();
+    state_append(state, "#",  STATE_LINE_COMMENT);
+    state_append(state, "\"", STATE_STRING);
+    state_append(state, "'",  STATE_CHAR);
+
+    state_append(state, "include", STATE_KEYWORD); 
+    state_append(state, "ifeq", STATE_KEYWORD);
+    state_append(state, "ifneq", STATE_KEYWORD);
+    state_append(state, "ifdef", STATE_KEYWORD);
+    state_append(state, "ifndef", STATE_KEYWORD);
+    state_append(state, "else", STATE_KEYWORD);
+    state_append(state, "endif", STATE_KEYWORD);
+    state_append(state, "define", STATE_KEYWORD);
+    state_append(state, "enddef", STATE_KEYWORD);
+    state_append(state, "export", STATE_KEYWORD);
+    state_append(state, "unexport", STATE_KEYWORD);
+    state_append(state, "override", STATE_KEYWORD);
+
+    state_append(state, "wildcard", STATE_KEYWORD);
+    state_append(state, "shell", STATE_KEYWORD);
+    state_append(state, "subst", STATE_KEYWORD);
+    state_append(state, "patsubst", STATE_KEYWORD);
+    state_append(state, "foreach", STATE_KEYWORD);
+    state_append(state, "filter", STATE_KEYWORD);
+    state_append(state, "filter-out", STATE_KEYWORD);
+    state_append(state, "eval", STATE_KEYWORD);
+
+    state_append(state, "%", STATE_SYMBOL);
+    state_append(state, "$", STATE_SYMBOL);
+    state_append(state, "$<", STATE_SYMBOL);
+    state_append(state, "$^", STATE_SYMBOL);
+    state_append(state, "$?", STATE_SYMBOL);
+    state_append(state, "$*", STATE_SYMBOL);
+    state_append(state, "@", STATE_SYMBOL);
+    state_append(state, "(", STATE_SYMBOL);
+    state_append(state, ")", STATE_SYMBOL);
+    state_append(state, "[", STATE_SYMBOL);
+    state_append(state, "]", STATE_SYMBOL);
+    state_append(state, "{", STATE_SYMBOL);
+    state_append(state, "}", STATE_SYMBOL);
+    state_append(state, ":", STATE_SYMBOL);
+    state_append(state, ";", STATE_SYMBOL);
+    state_append(state, ",", STATE_SYMBOL);
+    state_append(state, "|", STATE_SYMBOL);
+
+    mode.colorizer_state = state;
+    return &mode;
+}
+
 // - Bash Mode - //
 
 
@@ -96,16 +149,17 @@ Mode* c_mode () {
 // Get Language mode from filename.
 //
 
-typedef Mode* (*get_mode_fn)();
 typedef struct {
     const char* ext;
-    get_mode_fn mode_fn;
+    Mode* (*mode_fn)();
 } ModeExt;
 
 
 static ModeExt mode_list[] = {
     {".c", c_mode},
     {".h", c_mode},
+    {"makefile", make_mode },
+    {"Makefile", make_mode },
 };
 
 static

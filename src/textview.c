@@ -186,7 +186,7 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     int32_t styles[text_width];
 
     // Colorizer data.
-    Colorizer colorizer = { .state_start = buffer->mode == NULL ? NULL : buffer->mode->colorizer_state };
+    Colorizer colorizer = { .mode = buffer->mode };
 
     // Pre-fill buffer line-state array up to first line.
     while (buffer->line_state->size < view->scroll_line) {

@@ -37,8 +37,8 @@ struct state {
 };
 
 struct colorizer {
-    State* state_start;
-    State* state_current;
+    Mode* mode;
+    State* state;
 
     uint32_t col_last;
     int32_t string_type;

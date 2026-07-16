@@ -2,6 +2,7 @@
 
 #include "array.h"
 #include "character.h"
+#include "mode.h"
 
 
 //
@@ -82,7 +83,13 @@ State* next_state (State* current, int32_t ch) {
 //
 
 void colorize_begin_line (Colorizer* colorizer, int32_t comment_depth) {
-    colorizer->state_current = colorizer->state_start;
+    // No language mode: colorizer disabled.
+    if (colorizer->mode == NULL) {
+        return;
+    }
+
+    // Set initial states.
+    colorizer->state = colorizer->mode->colorizer_state;
     colorizer->col_last = 0;
     colorizer->string_type = 0;
     colorizer->comment_depth = comment_depth;
@@ -97,6 +104,7 @@ void apply_color (int32_t color_mask, uint32_t col, uint32_t col_last, uint32_t 
 
     for (int c = col_last; c < col; c++) {
         if (c < col_end && c >= col_start) {
+            style[c] &= 3;
             style[c] |= color_mask;
         }
     }
@@ -121,8 +129,8 @@ uint32_t get_color (Colorizer* colorizer, uint32_t default_color) {
 // NOTE: col represents the column immediatly after the emited char, not the column of the char itself
 //  (This is because of tabs, see textview.c) 
 void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_t col_start, uint32_t col_end, int32_t* style) {
-    // No start state: colorizer disabled.
-    if (colorizer->state_start == NULL) {
+    // No language mode: colorizer disabled.
+    if (colorizer->mode == NULL) {
         return;
     }
 
@@ -134,20 +142,34 @@ void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_
     }
 
     // Current Colorizer State.
-    State* state = colorizer->state_current;
+    State* state = colorizer->state;
 
-    // Special case: keyword handling.
+    // Next Colorizer State.
+    State* next = next_state(state, ch);
+    if (next == NULL) {
+        // col_last is no greater than (col - 1) so this will do nothing in that case.
+        apply_color(get_color(colorizer, 0), col - 1, colorizer->col_last, col_start, col_end, style);
+        colorizer->col_last = col - 1;
+        
+        // Try from start state.
+        next = next_state(colorizer->mode->colorizer_state, ch);
+    } 
+
+    // Keyword and name handling. 
+    //  -> part 1. prefix and word length.
     uint32_t chtype = chartype(ch);
-    if (chtype == CHARTYPE_TEXT) {
+    if (chtype == CHARTYPE_TEXT || (!colorizer->mode->strict_words && chtype != CHARTYPE_WS && (next == NULL || !next->terminal))) {
         if (colorizer->text_len == 0 && 'A' <= ch && ch <= 'Z') {
             colorizer->text_caps = true;
         }
         colorizer->text_len++;
-    } else {
+    } 
+    // -> part 2. apply color at end of word.
+    else {
         if (state->terminal && state->type == STATE_KEYWORD && state->depth == colorizer->text_len) {
             apply_color(get_color(colorizer, STYLE_KEYWORD), col - 1, col - colorizer->text_len - 1, col_start, col_end, style);
             colorizer->col_last = col - 1;
-        } else if (colorizer->text_caps) {
+        } else if (colorizer->text_caps && colorizer->mode->color_capitals) {
             apply_color(get_color(colorizer, STYLE_NAME), col - 1, col - colorizer->text_len - 1, col_start, col_end, style);
             colorizer->col_last = col - 1;
         }
@@ -155,23 +177,6 @@ void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_
         colorizer->text_len = 0;
         colorizer->text_caps = false;
     }
-
-    // Next Colorizer State.
-    State* next = next_state(state, ch);
-    
-    if (next == NULL) {
-        //if (state->type == STATE_KEYWORD && state->terminal && chartype(ch) != CHARTYPE_TEXT) {
-        //    apply_color(color, col, colorizer->col_last, col_start, col_end, style);
-        //    colorizer->col_last = col;
-        //}
-
-        // col_last is no greater than (col - 1) so this will do nothing in that case.
-        apply_color(get_color(colorizer, 0), col - 1, colorizer->col_last, col_start, col_end, style);
-        colorizer->col_last = col - 1;
-        
-        // Try from start state.
-        next = next_state(colorizer->state_start, ch);
-    } 
 
     if (next != NULL) {
         if (next->terminal) {
@@ -240,9 +245,9 @@ void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_
             if (end_string) colorizer->string_type = 0;
             if (end_comment) colorizer->comment_depth = 0;
         }
-        colorizer->state_current = next;
+        colorizer->state = next;
     } else {
-        colorizer->state_current = colorizer->state_start;
+        colorizer->state = colorizer->mode->colorizer_state;
         apply_color(get_color(colorizer, 0), col, colorizer->col_last, col_start, col_end, style);
         colorizer->col_last = col;
     }
