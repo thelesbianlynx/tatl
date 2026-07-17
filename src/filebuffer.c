@@ -101,6 +101,8 @@ void filebuffer_unsaved_read (FileBuffer* fb, const char* path) {
     //  - Just the filename.
     charbuffer_clear(fb->title);
     charbuffer_astr(fb->title, title_of(path));
+
+    textbuffer_set_mode(fb->buffer, get_language_mode(fb->title->buffer));
 }
 
 bool filebuffer_read (FileBuffer* fb, const char* path) {
@@ -182,7 +184,7 @@ void filebuffer_draw (FileBuffer* fb, Box* window, MouseEvent* mev) {
 
         Point P = {};
         textbuffer_primary_point(fb->buffer, &P);
-        snprintf(left, width + 1, "%s  %d:%d", mode_name, P.row + 1, P.col + 1);
+        snprintf(left, width + 1, "%s%s  %d:%d", mode_name, fb->buffer->hard_tabs ? "  [\\t]" : "", P.row + 1, P.col + 1);
 
         output_cup(line, window->x);
         output_setfg(13);
