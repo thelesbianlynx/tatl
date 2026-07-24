@@ -8,7 +8,6 @@
 #include "output.h"
 #include "editor.h"
 
-#include "colorizer.h"
 
 bool cursor_blink = false;
 
@@ -55,7 +54,6 @@ int main (int argc, char** argv) {
             width = size.ws_col;
             height = size.ws_row;
         }
-
 
         Box window = {0, 0, width, height};
         output_clear();

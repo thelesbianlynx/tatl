@@ -9,10 +9,10 @@ PREFIX ?= /usr/local
 BINDIR ?= $(DESTDIR)$(PREFIX)/bin
 
 $(NAME): $(OBJECTS)
-	gcc $(OBJECTS) -o $(NAME) -lm -lncurses -fsanitize=address
+	gcc $(OBJECTS) -o $(NAME) -lm -lncurses
 
 out/%.o: src/%.c $(HEADERS) | out
-	gcc $< -std=gnu11 -c -o $@ -Wall -Wextra -Wno-sign-compare -Wno-unused -Wshadow -g -fsanitize=address
+	gcc $< -std=gnu11 -c -o $@ -Wall -Wextra -Wno-sign-compare -Wno-unused -Wshadow -g
 
 out:
 	mkdir -p out

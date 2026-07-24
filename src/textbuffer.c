@@ -432,8 +432,26 @@ void textbuffer_edit (TextBuffer* buffer, uint32_t i, uint32_t j, Rope* text) {
     rope_destroy(buffer->text);
     buffer->text = c;
 
-    update_selections(buffer, i, window, total);
+    //update_selections(buffer, i, window, total);
+    for (int x = 0; x < buffer->selections->size; x++) {
+        Selection* sel = buffer->selections->data[x];
+        if (sel->cursor == i || sel->anchor == i) {
+            sel->cursor = i + total;
+            sel->anchor = i;
+            sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
+        } else {
+            if (sel->cursor >= i) {
+                sel->cursor = MAX(i, sel->cursor + window);
+                sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
+            }
+            if (sel->anchor >= i) {
+                sel->anchor = MAX(i, sel->anchor + window);
+            }
+        }
+    }
 
+    // Clear line-state Buffer up to this point.
+    //  -> Refresh syntax highlighting.
     int32_t line = rope_index_to_point(buffer->text, i).row;
     line = MIN(line, buffer->line_state->size);
     buffer->line_state->size = line;
@@ -441,7 +459,59 @@ void textbuffer_edit (TextBuffer* buffer, uint32_t i, uint32_t j, Rope* text) {
 
 // - Text Actions - //
 
+static 
+void textbuffer_surround (TextBuffer* buffer, uint32_t left, uint32_t right) {
+    action_begin(buffer, ACTION_EDIT);
+     IntBuffer* itext = intbuffer_create();
+    intbuffer_put_char(itext, 0, left);
+
+    Rope* text_left = rope_create(itext);
+    intbuffer_clear(itext);
+
+    intbuffer_put_char(itext, 0, right);
+    Rope* text_right = rope_create(itext);
+    intbuffer_destroy(itext);
+
+    for (int x = 0; x < buffer->selections->size; x++) {
+        Selection* sel = buffer->selections->data[x];
+        Rope* content = rope_substr(buffer->text, head(sel), tail(sel));
+        Rope* a = rope_append(text_left, content);
+        Rope* b = rope_append(a, text_right);
+        textbuffer_edit(buffer, head(sel), tail(sel), b);
+        rope_destroy(content);
+        rope_destroy(a);
+        rope_destroy(b);
+    }
+
+    rope_destroy(text_left);
+    rope_destroy(text_right);
+
+    action_end(buffer);
+}
+
 void textbuffer_edit_char (TextBuffer* buffer, uint32_t ch, int32_t i) {
+    // Surround Selection.
+    if (selection_array_max_len(buffer->selections) > 0) {
+        switch (ch) {
+            case '(':
+                textbuffer_surround(buffer, '(', ')');
+                return;
+            case '[':
+                textbuffer_surround(buffer, '[', ']');
+                return;
+            case '{':
+                textbuffer_surround(buffer, '{', '}');
+                return;
+            case '"':
+                textbuffer_surround(buffer, '"', '"');
+                return;
+            case '\'':
+                textbuffer_surround(buffer, '\'', '\'');
+                return;
+        }
+    }
+
+    // Otherwise regular character insert.
     action_begin(buffer, chartype(ch));
 
     IntBuffer* itext = intbuffer_create();
@@ -453,6 +523,7 @@ void textbuffer_edit_char (TextBuffer* buffer, uint32_t ch, int32_t i) {
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
         textbuffer_edit(buffer, head(sel), tail(sel), text);
+        sel->anchor = sel->cursor;
     }
 
     rope_destroy(text);

@@ -257,66 +257,6 @@ void colorize_next_char (Colorizer* colorizer, int32_t ch, uint32_t col, uint32_
     } else {
         colorizer->saw_slash = false;
     }
-
-    /* if (next != NULL) {
-        switch (next->type) {
-            case STATE_LINE_COMMENT:
-                color |= STYLE_COMMENT;
-                break;
-            case STATE_BEGIN_COMMENT:
-                color |= STYLE_COMMENT;
-                colorizer->clevel = 1;
-                break;
-            case STATE_END_COMMENT:
-                color |= STYLE_COMMENT;
-                colorizer->clevel = 0; // No Nesting comments.
-                break;
-            case STATE_SYMBOL:
-                color |= STYLE_SYMBOL;
-                break;
-            
-        }
-
-        //colorizer->state_current = next;
-    }
-
-    apply_color(color, col, colorizer->col_last, col_start, col_end, style);
-    colorizer->col_last = col;
-    
-
-     if (col->state == 0) {
-        if (ch == '/') {
-            col->cstate++;
-            if (col->cstate == 2) {
-                style[*i] |= 8;
-                style[*i+1] |= 8;
-                (*i) += 2;
-                col->state = -1;
-            }
-        } else {
-            (*i) += col->cstate;
-        
-            switch (ch) {
-                case '{':
-                case '}':
-                case '[':
-                case ']':
-                case '(':
-                case ')':
-                case ';':
-                case ':':
-                case '.':
-                case ',': {
-                    style[*i] |= 4;
-                    break;
-                }
-            }
-            (*i)++;
-        }
-    } else if (col->state == -1) {
-        style[*i] |= 8;
-        (*i)++;
-    } */
 }
 
 void colorize_next_char_fast (Colorizer* colorizer, int32_t ch) {
