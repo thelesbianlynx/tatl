@@ -22,6 +22,8 @@ bool filter_file (const char* filename) {
         if (buf->buffer[buf->size-1] == 'o' && buf->buffer[buf->size - 2] == '.') r = false;
         // Ignore static library (.a) files.
         if (buf->buffer[buf->size-1] == 'a' && buf->buffer[buf->size - 2] == '.') r = false;
+        // Ignore dependency (.d) files.
+        if (buf->buffer[buf->size-1] == 'd' && buf->buffer[buf->size - 2] == '.') r = false;
     }
 
     if (buf->size >= 3) {

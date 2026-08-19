@@ -65,5 +65,16 @@ static inline int32_t ABS (int32_t a) {
 //
 // Defines.
 //
+
+// Sizes.
 #define NODE_CONTENT_SIZE 128
 #define HIST_LIMIT 1024
+
+// Colors.
+#define COLOR_ACCENT 13
+#define COLOR_HIGHLIGHT 12
+#define COLOR_KEYWORD 11
+#define COLOR_SYMBOL 14
+#define COLOR_NAME 10
+#define COLOR_STRING 9
+#define COLOR_CHAR 3

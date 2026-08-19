@@ -532,7 +532,7 @@ void editor_draw (Editor* editor, Box* window, MouseEvent* m_event) {
         snprintf(left, width+1, "[Buffers] %d / %d", editor->current_buffer + 1, editor->buffers->size);
         snprintf(buf, width+1, " %s %*s ", left, width - 3 - (int) strlen(left), editor->dir->buffer);
         output_cup(window->y, window->x);
-        output_setfg(13);
+        output_setfg(COLOR_ACCENT);
         output_reverse();
         output_str(buf);
         output_normal();
@@ -676,7 +676,7 @@ void draw_tab_bar (Editor* editor, Box* window, CharBuffer* tab_bar, MouseEvent*
         char c = tab_bar->buffer[i + editor->tab_scroll];
         if (c == '\n') {
             output_normal();
-            output_setfg(13);
+            output_setfg(COLOR_ACCENT);
             output_uchar(0x2503);
             output_normal();
             bid++;
@@ -693,19 +693,19 @@ void draw_tab_bar (Editor* editor, Box* window, CharBuffer* tab_bar, MouseEvent*
 
     // Base Line.
     output_cup(window->y + 1, window->x);
-    output_setfg(13);
+    output_setfg(COLOR_ACCENT);
     bid = bid_start;
     if (editor->current_buffer == bid_start)
-        output_setfg(12);
+        output_setfg(COLOR_HIGHLIGHT);
     for (int i = 0; i < window->width && i < tab_bar->size; ++i) {
         char c = tab_bar->buffer[i + editor->tab_scroll];
         if (c == '\n') {
             bid++;
             if (bid == editor->current_buffer) {
                 output_uchar(0x2594); //0x2580);
-                output_setfg(12);
+                output_setfg(COLOR_HIGHLIGHT);
             } else {
-                output_setfg(13);
+                output_setfg(COLOR_ACCENT);
                 output_uchar(0x2594); //0x2580);
             }
         } else {
@@ -793,7 +793,7 @@ void draw_search (Editor* editor, Box* window, MouseEvent* mev) {
 
         output_cup(window->y + i, window->x);
         if (n == editor->search_selection) {
-            output_setbg(12);
+            output_setbg(COLOR_HIGHLIGHT);
             output_str(buf);
             output_normal();
         } else {

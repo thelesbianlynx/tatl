@@ -275,31 +275,31 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
                 current_style = style;
 
                 if (style & STYLE_SELECTION) {
-                    output_setbg(12);
+                    output_setbg(COLOR_HIGHLIGHT);
                 }
                 if (style & STYLE_CURSOR) {
                     output_underline();
                 }
                 if (style & STYLE_SYMBOL) {
                     output_bold();
-                    output_setfg(14);
+                    output_setfg(COLOR_SYMBOL);
                 }
                 if (style & STYLE_KEYWORD) {
                     output_bold();
-                    output_setfg(11);
+                    output_setfg(COLOR_KEYWORD);
                 }
                 if (style & STYLE_NAME) {
-                    output_setfg(10);
+                    output_setfg(COLOR_NAME);
                 }
                 if (style & STYLE_COMMENT) {
                     output_italic();
-                    output_setfg(13);
+                    output_setfg(COLOR_ACCENT);
                 }
                 if (style & STYLE_STRING) {
-                    output_setfg(9);
+                    output_setfg(COLOR_STRING);
                 }
                 if (style & STYLE_CHAR) {
-                    output_setfg(3);
+                    output_setfg(COLOR_CHAR);
                 }
             }
             // Put character.

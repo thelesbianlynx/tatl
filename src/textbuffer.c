@@ -432,23 +432,23 @@ void textbuffer_edit (TextBuffer* buffer, uint32_t i, uint32_t j, Rope* text) {
     rope_destroy(buffer->text);
     buffer->text = c;
 
-    //update_selections(buffer, i, window, total);
-    for (int x = 0; x < buffer->selections->size; x++) {
-        Selection* sel = buffer->selections->data[x];
-        if (sel->cursor == i || sel->anchor == i) {
-            sel->cursor = i + total;
-            sel->anchor = i;
-            sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
-        } else {
-            if (sel->cursor >= i) {
-                sel->cursor = MAX(i, sel->cursor + window);
-                sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
-            }
-            if (sel->anchor >= i) {
-                sel->anchor = MAX(i, sel->anchor + window);
-            }
-        }
-    }
+    update_selections(buffer, i, window, total);
+    //for (int x = 0; x < buffer->selections->size; x++) {
+    //    Selection* sel = buffer->selections->data[x];
+    //    if (sel->cursor == i || sel->anchor == i) {
+    //        sel->cursor = i + total;
+    //        sel->anchor = i;
+    //        sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
+    //    } else {
+    //        if (sel->cursor >= i) {
+    //            sel->cursor = MAX(i, sel->cursor + window);
+    //            sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
+    //        }
+    //        if (sel->anchor >= i) {
+    //            sel->anchor = MAX(i, sel->anchor + window);
+    //        }
+    //    }
+    //}
 
     // Clear line-state Buffer up to this point.
     //  -> Refresh syntax highlighting.

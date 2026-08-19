@@ -1,7 +1,6 @@
 #include "main.h"
 
 #include <sys/ioctl.h>
-#undef CTRL
 
 #include "array.h"
 #include "input.h"

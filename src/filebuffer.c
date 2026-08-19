@@ -187,7 +187,7 @@ void filebuffer_draw (FileBuffer* fb, Box* window, MouseEvent* mev) {
         snprintf(left, width + 1, "%s%s  %d:%d", mode_name, fb->buffer->hard_tabs ? "  [\\t]" : "", P.row + 1, P.col + 1);
 
         output_cup(line, window->x);
-        output_setfg(13);
+        output_setfg(COLOR_ACCENT);
         output_reverse();
         snprintf(buf, width + 1, " %s %*s ", left, width - 3 - (int) strlen(left), fb->shortpath->buffer);
         output_str(buf);

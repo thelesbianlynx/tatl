@@ -1,7 +1,8 @@
 SOURCES = $(wildcard src/*.c)
 HEADERS = $(wildcard src/*.h)
 
-OBJECTS = $(patsubst src/%.c, out/%.o, $(SOURCES))
+OBJECTS = $(SOURCES:src/%.c=out/%.o) #$(patsubst src/%.c, out/%.o, $(SOURCES))
+DEPS    = $(SOURCES:src/%.c=out/%.d)
 
 NAME = tatl
 
@@ -11,8 +12,8 @@ BINDIR ?= $(DESTDIR)$(PREFIX)/bin
 $(NAME): $(OBJECTS)
 	gcc $(OBJECTS) -o $(NAME) -lm -lncurses
 
-out/%.o: src/%.c $(HEADERS) | out
-	gcc $< -std=gnu11 -c -o $@ -Wall -Wextra -Wno-sign-compare -Wno-unused -Wshadow -g
+out/%.o: src/%.c | out
+	gcc $< -std=gnu11 -c -o $@ -Wall -Wextra -Wno-sign-compare -Wno-unused -Wshadow -g -MMD -MP
 
 out:
 	mkdir -p out
@@ -29,3 +30,5 @@ install: $(NAME)
 
 uninstall:
 	rm -f $(BINDIR)/$(NAME)
+
+-include $(DEPS)
