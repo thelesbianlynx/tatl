@@ -13,27 +13,24 @@
 
 static
 bool filter_file (const char* filename) {
-    CharBuffer* buf = charbuffer_create();
-    charbuffer_astr(buf, filename);
-    bool r = true;
+    int len = strlen(filename);
 
-    if (buf->size >= 2) {
+    if (len >= 2) {
         // Ignore object (.o) files.
-        if (buf->buffer[buf->size-1] == 'o' && buf->buffer[buf->size - 2] == '.') r = false;
+        if (filename[len-1] == 'o' && filename[len - 2] == '.') return false;
         // Ignore static library (.a) files.
-        if (buf->buffer[buf->size-1] == 'a' && buf->buffer[buf->size - 2] == '.') r = false;
+        if (filename[len-1] == 'a' && filename[len - 2] == '.') return false;
         // Ignore dependency (.d) files.
-        if (buf->buffer[buf->size-1] == 'd' && buf->buffer[buf->size - 2] == '.') r = false;
+        if (filename[len-1] == 'd' && filename[len - 2] == '.') return false;
     }
 
-    if (buf->size >= 3) {
+    if (len >= 3) {
         // Ignore shared object (.so) files.
-        if (buf->buffer[buf->size-1] == 'o' && buf->buffer[buf->size - 2] == 's'
-            && buf->buffer[buf->size - 3] == '.') r = false;
+        if (filename[len-1] == 'o' && filename[len - 2] == 's'
+            && filename[len - 3] == '.') return false;
     }
 
-    charbuffer_destroy(buf);
-    return r;
+    return true;
 }
 
 static

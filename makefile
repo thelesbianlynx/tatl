@@ -1,10 +1,8 @@
-SOURCES = $(wildcard src/*.c)
-HEADERS = $(wildcard src/*.h)
-
-OBJECTS = $(SOURCES:src/%.c=out/%.o) #$(patsubst src/%.c, out/%.o, $(SOURCES))
-DEPS    = $(SOURCES:src/%.c=out/%.d)
-
 NAME = tatl
+
+SOURCES = $(wildcard src/*.c)
+OBJECTS = $(SOURCES:src/%.c=out/%.o)
+DEPS    = $(SOURCES:src/%.c=out/%.d)
 
 PREFIX ?= /usr/local
 BINDIR ?= $(DESTDIR)$(PREFIX)/bin
