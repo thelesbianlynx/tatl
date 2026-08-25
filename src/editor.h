@@ -23,7 +23,7 @@ struct editor {
     int32_t tab_scroll;
     int32_t tab_scroll_dmg;
 
-    Array* search_files;
+    Search* search;
     int32_t search_selection;
     int32_t search_scroll;
     bool search_scroll_dmg;

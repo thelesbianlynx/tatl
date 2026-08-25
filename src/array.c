@@ -112,3 +112,12 @@ void* array_remove (Array* array, int32_t index) {
 
     return r;
 }
+
+void array_remove_item (Array* array, void* item) {
+    for (int i = 0; i < array->size; i++) {
+        if (item == array->data[i]) {
+            array_remove(array, i);
+            return;
+        }
+    }
+}

@@ -118,11 +118,13 @@ bool filebuffer_read (FileBuffer* fb, const char* path) {
     charbuffer_read(chars, f);
     fclose(f);
 
+    if (chars->size == 0) return false;
+
     IntBuffer* chars32 = intbuffer_create();
     intbuffer_put_text(chars32, 0, chars);
     charbuffer_destroy(chars);
 
-    if (chars32->data[chars32->size - 1] == '\n') {
+    if (chars32->size > 0 && chars32->data[chars32->size - 1] == '\n') {
         chars32->size--; // Remove Ending Newline.
     }
 

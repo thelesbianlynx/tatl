@@ -38,6 +38,7 @@ typedef struct intbuffer IntBuffer;
 typedef struct input_event InputEvent;
 typedef struct mouse_event MouseEvent;
 
+typedef struct search Search;
 typedef struct file_entry FileEntry;
 
 typedef struct box Box;
