@@ -37,15 +37,11 @@ void editor_init (Editor* editor, Array* filenames) {
     editor->replaceview = textview_create(editor->replacebuffer);
     editor->replaceview->linenos = false;
 
-    editor->clipboard = array_create();
     editor->dir = charbuffer_create();
+    editor->clipboard = array_create();
     editor->tab_scroll = 0;
     editor->tab_scroll_dmg = false;
-
     editor->search = search_create();
-    editor->search_selection = 0;
-    editor->search_scroll = 0;
-    editor->search_scroll_dmg = false;
 
     char* cwd = getcwd(NULL, 0);
     assert(*cwd == '/');
@@ -82,8 +78,7 @@ void editor_fini (Editor* editor) {
     textview_destroy(editor->replaceview);
     textbuffer_destroy(editor->replacebuffer);
 
-    search_unload_files(editor->search);
-
+    search_destroy(editor->search);
     array_destroy(editor->buffers);
     array_destroy(editor->clipboard);
     charbuffer_destroy(editor->dir);
@@ -157,8 +152,6 @@ bool editor_event (Editor* editor, InputEvent* event) {
             textbuffer_set_contents(editor->altbuffer, NULL);
             search_load_files(editor->search);
             editor->altmode = ALT_SEARCH;
-            editor->search_selection = 0;
-            editor->search_scroll = 0;
             break;
         }
 
@@ -272,11 +265,6 @@ bool altbuffer_event (Editor* editor, InputEvent* event) {
 
 static
 bool search_event (Editor* editor, InputEvent* event) {
-    if (editor->search->files->size == 0) {
-        search_unload_files(editor->search);
-        editor->altmode = 0;
-    }
-
     ON_KEY(event) {
         KEY_CTRL('Q') {
             search_unload_files(editor->search);
@@ -290,25 +278,23 @@ bool search_event (Editor* editor, InputEvent* event) {
         }
 
         KEY_TAB {
-            search_expand(editor->search, editor->search_selection);
-            if (editor->search->files->size == 0) {
-                search_unload_files(editor->search);
-                editor->altmode = 0;
-            }
-            if (editor->search_selection >= editor->search->files->size) {
-                editor->search_selection = editor->search->files->size - 1;
-            }
+            search_expand(editor->search);
+            break;
+        }
+
+        KEY_SHIFT_TAB {
+            search_collapse(editor->search);
             break;
         }
 
         KEY_ENTER {
-            FileEntry* entry = editor->search->files->data[editor->search_selection];
+            FileEntry* entry = search_get_entry(editor->search);
 
             // Check if file is actually a directory.
             if (entry->is_dir) {
-                // maybe do something here...
-                // otherwise just break.
-                goto brck;
+                // Enter into it.
+                search_forward(editor->search);
+                goto done;
             }
 
             // Check if file is already open.
@@ -318,7 +304,7 @@ bool search_event (Editor* editor, InputEvent* event) {
                     editor->current_buffer = i;
                     search_unload_files(editor->search);
                     editor->altmode = 0;
-                    goto brck;
+                    goto done;
                 }
             }
 
@@ -334,32 +320,28 @@ bool search_event (Editor* editor, InputEvent* event) {
 
             search_unload_files(editor->search);
             editor->altmode = 0;
-            brck: break;
+            done: break;
         }
 
         KEY_UP {
-            editor->search_selection = MOD(editor->search_selection - 1, editor->search->files->size);
-            editor->search_scroll_dmg = true;
+            search_prev(editor->search, 1);
             break;
         }
 
         KEY_DOWN {
-            editor->search_selection = MOD(editor->search_selection + 1, editor->search->files->size);
-            editor->search_scroll_dmg = true;
+            search_next(editor->search, 1);
             break;
         }
 
         KEY_RIGHT {
-            search_forward(editor->search, editor->search_selection);
-            editor->search_selection = 0;
-            editor->search_scroll_dmg = true;
+            search_forward(editor->search);
+            textbuffer_set_contents(editor->altbuffer, NULL);
             break;
         }
 
         KEY_LEFT {
             search_backward(editor->search);
-            editor->search_selection = 0;
-            editor->search_scroll_dmg = true;
+            textbuffer_set_contents(editor->altbuffer, NULL);
             break;
         }
 
@@ -381,8 +363,8 @@ bool search_event (Editor* editor, InputEvent* event) {
             textbuffer_get_contents(editor->altbuffer, query);
             search_rank_files(editor->search, query->buffer);
             charbuffer_destroy(query);
-            editor->search_selection = 0;
-            editor->search_scroll = 0;
+            editor->search->selection = 0;
+            editor->search->scroll = 0;
             break;
         }
     }
@@ -537,7 +519,6 @@ bool replace_event (Editor* editor, InputEvent* event) {
 
 static void build_tab_bar (Editor* editor, uint32_t width, CharBuffer* tab_bar);
 static void draw_tab_bar (Editor* editor, Box* window, CharBuffer* tab_bar, MouseEvent* mev);
-static void draw_search (Editor* editor, Box* window, MouseEvent* mev);
 
 static
 const char* prompt_string (Editor* editor) {
@@ -610,9 +591,9 @@ void editor_draw (Editor* editor, Box* window, MouseEvent* m_event) {
 
             if (search_window_size > 0) {
                 Box search_window = {
-                    window->x + prompt_ln - 1, window->y + window->height - search_window_size,
-                    window->width - prompt_ln, search_window_size };
-                draw_search(editor, &search_window, m_event);
+                    window->x, window->y + window->height - search_window_size,
+                    window->width, search_window_size };
+                search_draw(editor->search, &search_window, m_event);
             }
         }
     }
@@ -799,59 +780,3 @@ void build_tab_bar (Editor* editor, uint32_t width, CharBuffer* tab_bar) {
     }
 }
 
-// -- Search Window -- //
-
-static
-void draw_search (Editor* editor, Box* window, MouseEvent* mev) {
-    // Mouse Input.
-    if (mev != NULL) {
-
-    }
-
-    // Scroll damage.
-    if (editor->search_scroll_dmg) {
-        if (editor->search_selection < editor->search_scroll) {
-            editor->search_scroll = editor->search_selection;
-        }
-        if (editor->search_selection > editor->search_scroll + window->height - 2) {
-            editor->search_scroll = MAX(0, editor->search_selection - window->height + 2);
-        }
-
-        editor->search_scroll_dmg = false;
-    }
-
-    // Search index.
-    {
-        output_cup(window->y, window->x);
-        output_setfg(COLOR_ACCENT);
-        output_reverse();
-        char buf[window->width + 1];
-        snprintf(buf, window->width + 1 ," Index of: %s ", editor->search->path->buffer);
-        output_str(buf);
-        output_normal();
-    }
-
-    // Search entries.
-    for (int i = 0; i < window->height - 1; i++) {
-        int32_t n = i + editor->search_scroll;
-        if (n >= editor->search->files->size) break;
-
-        FileEntry* file = editor->search->files->data[n];
-
-        char buf[window->width + 1];
-        if (file->is_dir) {
-            snprintf(buf, window->width + 1 ," %s/ ", file->path->buffer + file->prefix + 1);
-        } else {
-            snprintf(buf, window->width + 1 ," %s ", file->path->buffer + file->prefix + 1);
-        }
-
-        output_cup(window->y + i + 1, window->x);
-        if (n == editor->search_selection) {
-            output_setbg(COLOR_HIGHLIGHT);
-            output_str(buf);
-            output_normal();
-        } else {
-            output_str(buf);
-        }
-    }
-}

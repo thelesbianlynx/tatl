@@ -8,6 +8,10 @@ struct search {
     Array* files;
     Array* dirs;
     uint32_t flags;
+
+    int32_t selection;
+    int32_t scroll;
+    bool scroll_dmg;
 };
 
 struct file_entry {
@@ -37,12 +41,23 @@ void search_load_files (Search* search);
 void search_unload_files (Search* search);
 
 
-void search_expand (Search* search, uint32_t entry);
+FileEntry* search_get_entry (Search* search);
+
+void search_next (Search* search, int32_t i);
+
+void search_prev (Search* search, int32_t i);
 
 
-void search_forward (Search* search, uint32_t entry);
+void search_expand (Search* search);
+
+void search_collapse (Search* search);
+
+
+void search_forward (Search* search);
 
 void search_backward (Search* search);
 
 
 void search_rank_files (Search* search, const char* prompt);
+
+void search_draw (Search* search, Box* window, MouseEvent* mev);
