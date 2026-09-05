@@ -86,7 +86,7 @@ void editor_fini (Editor* editor) {
 
 
 static
-FileBuffer* get_buffer(Editor* editor) {
+FileBuffer* get_buffer (Editor* editor) {
     editor->current_buffer = MOD(editor->current_buffer, editor->buffers->size);
     return editor->buffers->data[editor->current_buffer];
 }

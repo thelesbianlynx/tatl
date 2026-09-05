@@ -10,11 +10,7 @@
 //
 
 State* state_create () {
-    State* state = malloc(sizeof(State));
-    state->ch = 0;
-    state->type = 0;
-    state->depth = 0;
-    state->terminal = false;
+    State* state = calloc(1, sizeof(State));
     state->next_state = array_create();
     return state;
 }
@@ -45,6 +41,8 @@ void state_append (State* state, const char* str, uint32_t type) {
             next->ch = ch;
             next->depth = state->depth + 1;
             array_add(state->next_state, next);
+            // Fast next state finding: 
+            if (ch < 128) state->next_state_fast[ch] = next;
         }
 
         state = next;
@@ -67,6 +65,10 @@ void state_print (State* state, uint32_t lvl) {
 
 static
 State* next_state (State* current, int32_t ch) {
+    if (ch < 128) {
+        return current->next_state_fast[ch];
+    }
+
     for (int i = 0; i < current->next_state->size; i++) {
         State* next = current->next_state->data[i];
         if (next->ch == ch) {

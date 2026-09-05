@@ -34,6 +34,7 @@ struct state {
     bool terminal;
 
     Array* next_state;
+    State* next_state_fast[128];
 };
 
 struct colorizer {

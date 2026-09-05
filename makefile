@@ -18,8 +18,8 @@ out:
 
 .PHONY: clean install uninstall
 clean:
-	rm -r out
-	rm $(NAME)
+	-rm -r out
+	-rm $(NAME)
 
 install: $(NAME)
 	mkdir -p $(BINDIR)
