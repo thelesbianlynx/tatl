@@ -106,8 +106,8 @@ void apply_color (int32_t color_mask, uint32_t col, uint32_t col_last, uint32_t 
 
     for (int c = col_last; c < col; c++) {
         if (c < col_end && c >= col_start) {
-            style[c] &= 3;
-            style[c] |= color_mask;
+            style[c - col_start] &= 3;
+            style[c - col_start] |= color_mask;
         }
     }
 }

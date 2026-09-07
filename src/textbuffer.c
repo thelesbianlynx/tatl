@@ -390,19 +390,49 @@ void textbuffer_redo (TextBuffer* buffer) {
 
 // -- Cursor Manipulation -- //
 
-static
+// Real Column: actual cursor position relative to line start.
+//  Used when restoring column memory.
+static inline
+Point real_col (TextBuffer* buffer, Point p) {
+    if (buffer->hard_tabs) {
+
+    }
+
+    // Is only ever different when there are hard tabs.
+    return p;
+}
+
+// Virtual (or Visual) Column: what column is the cursor drawn on.
+//  Used when updating column memory.
+static inline
+int32_t virtual_col (TextBuffer* buffer, Point p) {
+    if (buffer->hard_tabs) {
+
+    }
+
+    // Is only ever different when there are hard tabs.
+    return p.col;
+}
+
+static inline
 void update_selections (TextBuffer* buffer, uint32_t index, int32_t window, int32_t total) {
     for (int i = 0; i < buffer->selections->size; i++) {
         Selection* sel = buffer->selections->data[i];
         if (sel->cursor >= index) {
             sel->cursor = MAX(index + total, sel->cursor + window);
-            sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
+            sel->col_mem = virtual_col(buffer, rope_index_to_point(buffer->text, sel->cursor));
         }
         if (sel->anchor >= index) {
             sel->anchor = MAX(index + total, sel->anchor + window);
         }
     }
 }
+
+// -- Edit function --//
+
+// All Changes to the text should go through this function!
+// Known Exceptions:
+//      - Move line (specifically end of buffer).
 
 static
 void textbuffer_edit (TextBuffer* buffer, uint32_t i, uint32_t j, Rope* text) {
@@ -523,7 +553,7 @@ void textbuffer_edit_char (TextBuffer* buffer, uint32_t ch, int32_t i) {
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
         textbuffer_edit(buffer, head(sel), tail(sel), text);
-        sel->anchor = sel->cursor;
+        //sel->anchor = sel->cursor;
     }
 
     rope_destroy(text);
@@ -956,7 +986,7 @@ void textbuffer_cursor_col (TextBuffer* buffer, int32_t i, bool s) {
         if (sel->cursor < 0) sel->cursor = 0;
         if (sel->cursor > rope_len(buffer->text)) sel->cursor = rope_len(buffer->text);
         if (!s) sel->anchor = sel->cursor;
-        sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
+        sel->col_mem = virtual_col(buffer, rope_index_to_point(buffer->text, sel->cursor));
     }
 }
 
@@ -967,7 +997,7 @@ void textbuffer_cursor_row (TextBuffer* buffer, int32_t i, bool s) {
     for (int x = 0; x < buffer->selections->size; x++) {
         Selection* sel = buffer->selections->data[x];
         Point p = rope_index_to_point(buffer->text, sel->cursor);
-        sel->cursor = rope_point_to_index(buffer->text, (Point) {p.row + i, sel->col_mem});
+        sel->cursor = rope_point_to_index(buffer->text, real_col(buffer, (Point) {p.row + i, sel->col_mem })); // Restore from memory. 
         if (!s) sel->anchor = sel->cursor;
     }
 }
@@ -1031,7 +1061,7 @@ void textbuffer_cursor_word (TextBuffer* buffer, int32_t i, bool s) {
         }
 
         if (!s) sel->anchor = sel->cursor;
-        sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
+        sel->col_mem = virtual_col(buffer, rope_index_to_point(buffer->text, sel->cursor));
     }
 }
 
@@ -1062,7 +1092,7 @@ void textbuffer_cursor_line (TextBuffer* buffer, int32_t i, bool s) {
         }
 
         if (!s) sel->anchor = sel->cursor;
-        sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
+        sel->col_mem = virtual_col(buffer, rope_index_to_point(buffer->text, sel->cursor));
     }
 }
 
@@ -1083,7 +1113,7 @@ void textbuffer_cursor_goto (TextBuffer* buffer, int32_t row, int32_t col, bool 
 
     sel->cursor = rope_point_to_index(buffer->text, (Point) {row, col});
     if (!s) sel->anchor = sel->cursor;
-    sel->col_mem = rope_index_to_point(buffer->text, sel->cursor).col;
+    sel->col_mem = virtual_col(buffer, rope_index_to_point(buffer->text, sel->cursor));
 }
 
 
@@ -1315,6 +1345,7 @@ void textbuffer_find_next (TextBuffer* buffer, FindTarget* target, int32_t i) {
             } else {
                 sel->anchor = data.location;
                 sel->cursor = data.location + target->size;
+                sel->col_mem = virtual_col(buffer, rope_index_to_point(buffer->text, sel->cursor));
                 buffer->cursor_dmg = true;
             }
         } else {
@@ -1343,6 +1374,7 @@ void textbuffer_find_next (TextBuffer* buffer, FindTarget* target, int32_t i) {
             } else {
                 sel->anchor = data.location;
                 sel->cursor = data.location + target->size;
+                sel->col_mem = virtual_col(buffer, rope_index_to_point(buffer->text, sel->cursor));
                 buffer->cursor_dmg = true;
             }
         } else {
@@ -1370,6 +1402,7 @@ void textbuffer_find_add_next (TextBuffer* buffer, FindTarget* target, int32_t i
                 array_add(buffer->selections, sel = selection_copy(sel));
                 sel->anchor = data.location;
                 sel->cursor = data.location + target->size;
+                sel->col_mem = virtual_col(buffer, rope_index_to_point(buffer->text, sel->cursor));
                 buffer->cursor_dmg = true;
             } else {
                 i = 0;
@@ -1391,6 +1424,7 @@ void textbuffer_find_add_next (TextBuffer* buffer, FindTarget* target, int32_t i
                 array_insert(buffer->selections, 0, sel = selection_copy(sel));
                 sel->anchor = data.location;
                 sel->cursor = data.location + target->size;
+                sel->col_mem = virtual_col(buffer, rope_index_to_point(buffer->text, sel->cursor));
                 buffer->cursor_dmg = true;
             } else {
                 i = 0;

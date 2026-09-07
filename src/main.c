@@ -29,6 +29,7 @@ int main (int argc, char** argv) {
     // Launch Editor.
     //
     output_init();
+    output_civis();
 
     Editor editor;
     editor_init(&editor, filenames);

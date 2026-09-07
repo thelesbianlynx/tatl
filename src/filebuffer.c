@@ -115,9 +115,15 @@ bool filebuffer_read (FileBuffer* fb, const char* path) {
     }
 
     CharBuffer* chars = charbuffer_create();
-    charbuffer_read(chars, f);
-    fclose(f);
 
+    int ch;
+    bool tabs = false;
+    while ((ch = fgetc(f)) != EOF) {
+        charbuffer_achar(chars, (char) ch);
+        if (ch == '\t') tabs = true;
+    }
+
+    fclose(f);
     if (chars->size == 0) return false;
 
     IntBuffer* chars32 = intbuffer_create();
@@ -137,6 +143,7 @@ bool filebuffer_read (FileBuffer* fb, const char* path) {
     textview_destroy(fb->view);
     fb->view = textview_create(fb->buffer);
 
+    fb->buffer->hard_tabs = tabs;
     textbuffer_set_mode(fb->buffer, get_language_mode(fb->title->buffer));
 
     return true;

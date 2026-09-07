@@ -149,6 +149,12 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
                 } else if (mstate->button == 65) {
                     // Scroll Down.
                     view->scroll_line += MIN(5, scroll_len(mstate->dtime));
+                } else if (mstate->button == 66) {
+                    // Scroll Left.
+                    view->scroll_col -= MIN(5, scroll_len(mstate->dtime));;
+                } else if (mstate->button == 67) {
+                    // Scroll Right.
+                    view->scroll_col += MIN(5, scroll_len(mstate->dtime));;
                 }
             }
         }
@@ -177,9 +183,33 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
         buffer->cursor_dmg = false;
     }
 
-    // Clamp Scroll.
+    // Clamp Vertical Scroll.
     if (view->scroll_line >= lines) view->scroll_line = lines - 1;
     if (view->scroll_line < 0) view->scroll_line = 0;
+
+    // Longest Line Length.
+    int32_t start[text_height];
+    int32_t end[text_height];
+    int32_t max_line_len = 0;
+    for (int i = 0; i < text_height; i++) {
+        // End of Buffer.
+        if (view->scroll_line + i >= lines) {
+            break;
+        }
+
+        // Start and end of line.
+        start[i] = rope_point_to_index(buffer->text, (Point) {view->scroll_line + i, 0});
+        end[i] = rope_point_to_index(buffer->text, (Point) {view->scroll_line + i, INT_MAX});
+
+        // Line Length.
+        int32_t line_len = end[i] - start[i];
+        if (line_len > max_line_len) max_line_len = line_len;
+    }
+
+    // Clamp Horizontal Scroll.
+    int32_t max_col_scroll = MAX(0,max_line_len - text_width);
+    if (view->scroll_col > max_col_scroll) view->scroll_col = max_col_scroll;
+    if (view->scroll_col < 0) view->scroll_col = 0;
 
     // Buffers for char and style data.
     int32_t chars[text_width];
@@ -200,13 +230,13 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
         }
 
         // Line Start and End.
-        int32_t start = rope_point_to_index(buffer->text, (Point) {line, 0});
-        int32_t end = rope_point_to_index(buffer->text, (Point) {line, INT_MAX});
+        int32_t line_start = rope_point_to_index(buffer->text, (Point) {line, 0});
+        int32_t line_end = rope_point_to_index(buffer->text, (Point) {line, INT_MAX});
 
         // Fill in.
         colorize_begin_line(&colorizer, start_state);
-        rope_foreach_substr(buffer->text, start, end, char_style_fast, &colorizer);
-        char_style_fast(end, '\n', &colorizer);
+        rope_foreach_substr(buffer->text, line_start, line_end, char_style_fast, &colorizer);
+        char_style_fast(line_end, '\n', &colorizer);
         array_add(buffer->line_state, (void*)(intptr_t) colorizer.comment_depth);
     }
 
@@ -216,10 +246,6 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
         if (view->scroll_line + i >= lines) {
             break;
         }
-
-        // Start and end of line.
-        int32_t start = rope_point_to_index(buffer->text, (Point) {view->scroll_line + i, 0});
-        int32_t end = rope_point_to_index(buffer->text, (Point) {view->scroll_line + i, INT_MAX});
 
         // Line Start State.
         int32_t start_state = 0;
@@ -253,8 +279,8 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
 
         // Get Line Content and Style.
         colorize_begin_line(&colorizer, start_state);
-        rope_foreach_substr(buffer->text, start, end, char_style, &data);
-        char_style(end, '\n', &data);
+        rope_foreach_substr(buffer->text, start[i], end[i], char_style, &data);
+        char_style(end[i], '\n', &data);
 
         // Buffer line state if not filled in.
         if (buffer->line_state->size <= view->scroll_line + i)
@@ -309,5 +335,4 @@ void textview_draw (TextView* view, Box* window, MouseEvent* mstate) {
     }
 
     output_normal();
-    output_civis();
 }
