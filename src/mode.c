@@ -340,6 +340,8 @@ Mode* bash_mode () {
     state_append(state, "'",  STATE_CHAR);
 
     state_append(state, "if", STATE_KEYWORD);
+    state_append(state, "then", STATE_KEYWORD);
+    state_append(state, "elif", STATE_KEYWORD);
     state_append(state, "else", STATE_KEYWORD);
     state_append(state, "fi", STATE_KEYWORD);
     state_append(state, "case", STATE_KEYWORD);
@@ -354,6 +356,7 @@ Mode* bash_mode () {
     state_append(state, "select", STATE_KEYWORD);
     state_append(state, "time", STATE_KEYWORD);
     state_append(state, "echo", STATE_KEYWORD);
+    state_append(state, "exit", STATE_KEYWORD);
     state_append(state, "read", STATE_KEYWORD);
     state_append(state, "printf", STATE_KEYWORD);
     state_append(state, "coproc", STATE_KEYWORD);

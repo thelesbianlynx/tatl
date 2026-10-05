@@ -103,6 +103,7 @@ void filebuffer_unsaved_read (FileBuffer* fb, const char* path) {
     charbuffer_astr(fb->title, title_of(path));
 
     textbuffer_set_mode(fb->buffer, get_language_mode(fb->title->buffer));
+    fb->buffer->text_dmg = true; // "Uncreated" buffers should be 'modified' (i.e. unsaved).
 }
 
 bool filebuffer_read (FileBuffer* fb, const char* path) {
